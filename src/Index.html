@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Helper</title>
+  <style>
+    :root {
+      --bg: #f4f5f7; --card: #fff; --text: #1d2330; --muted: #6b7280; --border: #e3e6eb;
+      --accent: #2563eb; --accent-soft: #e8efff; --ok: #15803d; --ok-soft: #e7f6ec; --danger: #b91c1c;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #9aa3b2; --border: #2b3240;
+        --accent: #6b9bff; --accent-soft: #1f2b45; --ok: #4ade80; --ok-soft: #173023; --danger: #f87171;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header { padding: 16px; max-width: 980px; margin: 0 auto; display: flex; align-items: baseline;
+      justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    header h1 { margin: 0; font-size: 22px; }
+    header .date { color: var(--muted); }
+    nav { max-width: 980px; margin: 0 auto; padding: 0 16px; display: flex; gap: 6px; }
+    nav button { border: 0; background: transparent; color: var(--muted); padding: 8px 14px;
+      border-radius: 999px; font: inherit; cursor: pointer; }
+    nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    main { max-width: 980px; margin: 0 auto; padding: 16px; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .card h2 { margin: 0 0 12px; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; }
+    .hidden { display: none !important; }
+    .big-temp { font-size: 44px; font-weight: 600; line-height: 1; }
+    .wx-now { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
+    .wx-icon { font-size: 44px; }
+    .hours { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
+    .hours div { text-align: center; min-width: 46px; font-size: 13px; }
+    .days { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .days td { padding: 5px 2px; border-top: 1px solid var(--border); }
+    .days td:last-child { text-align: right; }
+    ul.plain { list-style: none; margin: 0; padding: 0; }
+    ul.plain li { padding: 8px 0; border-top: 1px solid var(--border); }
+    ul.plain li:first-child { border-top: 0; }
+    .ex-name { font-weight: 600; }
+    .event-day { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: 10px; }
+    button.btn, .btn { border: 1px solid var(--border); background: var(--card); color: var(--text);
+      padding: 8px 12px; border-radius: 9px; font: inherit; cursor: pointer; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.done { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+    .btn:disabled { opacity: .6; cursor: default; }
+    input, select, textarea { font: inherit; color: var(--text); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; width: 100%; }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row > * { flex: 1 1 auto; }
+    .row > .btn { flex: 0 0 auto; }
+    .daytabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .daytabs button { border: 1px solid var(--border); background: var(--card); color: var(--text);
+      border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer; }
+    .daytabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .daytabs button .count { opacity: .7; font-size: 12px; margin-left: 4px; }
+    .ex-edit { display: grid; grid-template-columns: 2fr .6fr .7fr .8fr 1.6fr auto auto auto; gap: 6px;
+      align-items: center; padding: 6px 0; border-top: 1px solid var(--border); }
+    .ex-edit.head { border-top: 0; font-size: 12px; color: var(--muted); }
+    .ex-edit .icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
+    @media (max-width: 640px) {
+      .ex-edit { grid-template-columns: 1fr 1fr 1fr; }
+      .ex-edit > :first-child, .ex-edit > :nth-child(5) { grid-column: 1 / -1; }
+      .ex-edit.head { display: none; }
+    }
+    .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text);
+      color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .error { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Daily Helper</h1>
+    <span class="date" id="headerDate"></span>
+  </header>
+  <nav>
+    <button data-tab="today" class="active">Today</button>
+    <button data-tab="week">Weekly regimen</button>
+    <button data-tab="settings">Settings</button>
+  </nav>
+
+  <main>
+    <p id="loading" class="muted">Loading…</p>
+
+    <!-- TODAY -->
+    <section id="tab-today" class="hidden">
+      <div class="grid">
+        <div class="card" id="weatherCard">
+          <h2><span>Weather <span class="muted small" id="wxLocation"></span></span></h2>
+          <div id="weatherBody"></div>
+        </div>
+
+        <div class="card">
+          <h2><span id="todayTitle">Today's training</span>
+            <button class="btn small" id="editTodayBtn">Edit</button></h2>
+          <ul class="plain" id="todayList"></ul>
+          <label for="logNotes">Notes for today</label>
+          <textarea id="logNotes" rows="2" placeholder="How did it go?"></textarea>
+          <div class="row" style="margin-top:10px">
+            <button class="btn" id="doneBtn">Mark as done</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span>Calendar</span></h2>
+          <div id="eventsBody"></div>
+          <label>Add today's workout to your calendar</label>
+          <div class="row">
+            <input type="time" id="workoutTime" style="max-width:130px">
+            <select id="workoutMinutes" style="max-width:130px">
+              <option value="30">30 min</option><option value="45">45 min</option>
+              <option value="60">60 min</option><option value="75">75 min</option>
+              <option value="90">90 min</option><option value="120">2 hours</option>
+            </select>
+            <button class="btn primary" id="addEventBtn">Add</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WEEK -->
+    <section id="tab-week" class="hidden">
+      <div class="card">
+        <h2><span>Weekly regimen</span></h2>
+        <p class="muted small" style="margin-top:-6px">Each day keeps its own regimen and repeats every week until you change it. Saved to the <b>Regimen</b> tab of your Google Sheet.</p>
+        <div class="daytabs" id="dayTabs"></div>
+        <div class="ex-edit head"><span>Exercise</span><span>Sets</span><span>Reps</span><span>Weight</span><span>Notes</span><span></span><span></span><span></span></div>
+        <div id="exList"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" id="addExBtn">+ Add exercise</button>
+          <span></span>
+          <select id="copyFrom" style="max-width:200px"></select>
+          <button class="btn primary" id="saveDayBtn">Save</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="tab-settings" class="hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Location</h2>
+          <p class="small">Current: <b id="curLocation">not set</b></p>
+          <div class="row">
+            <input id="locQuery" placeholder="City or ZIP, e.g. Austin">
+            <button class="btn" id="locSearchBtn">Search</button>
+          </div>
+          <ul class="plain" id="locResults" style="margin-top:8px"></ul>
+          <div class="row" style="margin-top:8px">
+            <button class="btn" id="geoBtn">Use my current location</button>
+          </div>
+          <label for="units">Units</label>
+          <select id="units">
+            <option value="fahrenheit">Fahrenheit, mph, inches</option>
+            <option value="celsius">Celsius, km/h, mm</option>
+          </select>
+        </div>
+        <div class="card">
+          <h2>Calendar</h2>
+          <label for="calendarId">Calendar to show and add workouts to</label>
+          <select id="calendarId"><option value="primary">Primary calendar</option></select>
+          <p class="muted small">The app uses the Google account that deployed it.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  // ---------- Server bridge ----------
+  // In Apps Script, google.script.run calls functions in Code.gs.
+  // Opening this file directly in a browser uses demo data instead.
+  function call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (resolve, reject) {
+      if (window.google && google.script && google.script.run) {
+        var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(function (e) { reject(e); });
+        r[fn].apply(r, args);
+      } else {
+        setTimeout(function () { try { resolve(DEMO[fn].apply(null, args)); } catch (e) { reject(e); } }, 150);
+      }
+    });
+  }
+
+  var DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  var state = { data: null, editDay: null, draft: [] };
+
+  // ---------- Weather codes ----------
+  var WX = {
+    0: ['Clear', '☀️', '🌙'], 1: ['Mainly clear', '🌤️', '🌙'], 2: ['Partly cloudy', '⛅', '☁️'], 3: ['Overcast', '☁️'],
+    45: ['Fog', '🌫️'], 48: ['Freezing fog', '🌫️'],
+    51: ['Light drizzle', '🌦️'], 53: ['Drizzle', '🌦️'], 55: ['Heavy drizzle', '🌧️'],
+    56: ['Freezing drizzle', '🌧️'], 57: ['Freezing drizzle', '🌧️'],
+    61: ['Light rain', '🌦️'], 63: ['Rain', '🌧️'], 65: ['Heavy rain', '🌧️'],
+    66: ['Freezing rain', '🌧️'], 67: ['Freezing rain', '🌧️'],
+    71: ['Light snow', '🌨️'], 73: ['Snow', '🌨️'], 75: ['Heavy snow', '❄️'], 77: ['Snow grains', '🌨️'],
+    80: ['Rain showers', '🌦️'], 81: ['Rain showers', '🌧️'], 82: ['Violent showers', '⛈️'],
+    85: ['Snow showers', '🌨️'], 86: ['Snow showers', '❄️'],
+    95: ['Thunderstorm', '⛈️'], 96: ['Thunderstorm, hail', '⛈️'], 99: ['Thunderstorm, hail', '⛈️']
+  };
+  function wx(code, isDay) {
+    var w = WX[code] || ['—', '🌡️'];
+    return { label: w[0], icon: isDay === false && w[2] ? w[2] : w[1] };
+  }
+
+  // ---------- Helpers ----------
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function r0(n) { return Math.round(n); }
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2200); }
+  function fail(e) { toast('Error: ' + (e && e.message ? e.message : e)); console.error(e); }
+  function parseDate(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function fmtTime(iso) { var d = new Date(iso); return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  function fmtHour(iso) { var d = new Date(iso); return d.toLocaleTimeString([], { hour: 'numeric' }); }
+  function exDetail(x) {
+    var parts = [];
+    if (x.sets && x.reps) parts.push(x.sets + ' × ' + x.reps);
+    else if (x.sets) parts.push(x.sets + ' sets'); else if (x.reps) parts.push(x.reps);
+    if (x.weight) parts.push('@ ' + x.weight);
+    return parts.join(' ');
+  }
+
+  // ---------- Tabs ----------
+  function showTab(name) {
+    document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+    ['today', 'week', 'settings'].forEach(function (t) { $('tab-' + t).classList.toggle('hidden', t !== name); });
+    if (name === 'week' && !state.editDay) selectDay(state.data.dayName);
+  }
+  document.querySelectorAll('nav button').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.dataset.tab); });
+  });
+
+  // ---------- Render: Today ----------
+  function renderWeather() {
+    var d = state.data, body = $('weatherBody');
+    if (!d.settings.latitude) {
+      body.innerHTML = '<p class="muted">Set your location in <a href="#" id="goSettings">Settings</a> to see the forecast.</p>';
+      $('goSettings').onclick = function (e) { e.preventDefault(); showTab('settings'); };
+      return;
+    }
+    if (d.weatherError || !d.weather) { body.innerHTML = '<p class="error">' + esc(d.weatherError || 'Weather unavailable') + '</p>'; return; }
+    var w = d.weather, c = w.current, u = w.units, now = wx(c.code, c.isDay), today = w.daily[0];
+    $('wxLocation').textContent = '· ' + w.location;
+    var html = '<div class="wx-now"><div class="wx-icon">' + now.icon + '</div><div>' +
+      '<div class="big-temp">' + r0(c.temp) + u.temp + '</div>' +
+      '<div>' + now.label + ' · feels like ' + r0(c.feelsLike) + u.temp + '</div>' +
+      '<div class="muted small">H ' + r0(today.max) + '° L ' + r0(today.min) + '° · ' +
+      'Rain ' + (today.precipChance == null ? '–' : today.precipChance + '%') + ' · Wind ' + r0(c.wind) + ' ' + u.wind +
+      ' · Humidity ' + c.humidity + '% · UV ' + (today.uv == null ? '–' : r0(today.uv)) + '</div>' +
+      '<div class="muted small">Sunrise ' + fmtTime(today.sunrise) + ' · Sunset ' + fmtTime(today.sunset) + '</div>' +
+      '</div></div>';
+    html += '<div class="hours">' + w.hourly.map(function (h, i) {
+      return '<div><div class="muted">' + (i === 0 ? 'Now' : fmtHour(h.time)) + '</div><div>' + wx(h.code).icon +
+        '</div><div>' + r0(h.temp) + '°</div><div class="muted">' + (h.precipChance || 0) + '%</div></div>';
+    }).join('') + '</div>';
+    html += '<table class="days">' + w.daily.map(function (day, i) {
+      var dd = parseDate(day.date);
+      return '<tr><td>' + (i === 0 ? 'Today' : dd.toLocaleDateString([], { weekday: 'short' })) + '</td>' +
+        '<td>' + wx(day.code).icon + ' <span class="muted small">' + wx(day.code).label + '</span></td>' +
+        '<td class="muted small">' + (day.precipChance || 0) + '%</td>' +
+        '<td>' + r0(day.max) + '° <span class="muted">' + r0(day.min) + '°</span></td></tr>';
+    }).join('') + '</table>';
+    body.innerHTML = html;
+  }
+
+  function renderToday() {
+    var d = state.data, list = d.regimen[d.dayName] || [];
+    $('todayTitle').textContent = d.dayName + "'s training";
+    $('todayList').innerHTML = list.length ? list.map(function (x) {
+      return '<li><div class="ex-name">' + esc(x.exercise) + '</div>' +
+        '<div class="muted small">' + esc(exDetail(x)) + (x.notes ? ' · ' + esc(x.notes) : '') + '</div></li>';
+    }).join('') : '<li class="muted">Rest day — nothing scheduled. Tap Edit to add exercises.</li>';
+    var done = d.log && d.log.completed;
+    $('doneBtn').textContent = done ? '✓ Done' : 'Mark as done';
+    $('doneBtn').classList.toggle('done', !!done);
+    $('logNotes').value = d.log ? d.log.notes : '';
+  }
+
+  function renderEvents() {
+    var d = state.data, body = $('eventsBody');
+    if (d.calendarError) { body.innerHTML = '<p class="error">' + esc(d.calendarError) + '</p>'; return; }
+    if (!d.events.length) { body.innerHTML = '<p class="muted">Nothing on your calendar this week.</p>'; return; }
+    var html = '', lastDate = null;
+    d.events.forEach(function (e) {
+      if (e.date !== lastDate) {
+        lastDate = e.date;
+        var label = e.date === d.today ? 'Today' : parseDate(e.date).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+        html += '<div class="event-day">' + label + '</div>';
+      }
+      html += '<div style="padding:4px 0"><span class="muted small" style="display:inline-block;min-width:70px">' +
+        (e.allDay ? 'All day' : fmtTime(e.start)) + '</span> ' + esc(e.title) + '</div>';
+    });
+    body.innerHTML = html;
+  }
+
+  // ---------- Render: Week editor ----------
+  function renderDayTabs() {
+    $('dayTabs').innerHTML = DAYS.map(function (day) {
+      var n = (state.data.regimen[day] || []).length;
+      return '<button data-day="' + day + '" class="' + (day === state.editDay ? 'active' : '') + '">' +
+        day.slice(0, 3) + '<span class="count">' + (n || 'rest') + '</span></button>';
+    }).join('');
+    $('dayTabs').querySelectorAll('button').forEach(function (b) {
+      b.onclick = function () { selectDay(b.dataset.day); };
+    });
+    $('copyFrom').innerHTML = '<option value="">Copy from another day…</option>' + DAYS.filter(function (d) {
+      return d !== state.editDay;
+    }).map(function (d) { return '<option>' + d + '</option>'; }).join('');
+  }
+
+  function selectDay(day) {
+    state.editDay = day;
+    state.draft = (state.data.regimen[day] || []).map(function (x) { return Object.assign({}, x); });
+    renderDayTabs();
+    renderDraft();
+  }
+
+  function renderDraft() {
+    var fields = [['exercise', 'Exercise'], ['sets', 'Sets'], ['reps', 'Reps'], ['weight', 'Weight'], ['notes', 'Notes']];
+    $('exList').innerHTML = state.draft.length ? state.draft.map(function (x, i) {
+      return '<div class="ex-edit" data-i="' + i + '">' + fields.map(function (f) {
+        return '<input data-f="' + f[0] + '" placeholder="' + f[1] + '" value="' + esc(x[f[0]]) + '">';
+      }).join('') +
+        '<button class="icon" data-act="up" title="Move up">↑</button>' +
+        '<button class="icon" data-act="down" title="Move down">↓</button>' +
+        '<button class="icon" data-act="del" title="Remove">✕</button></div>';
+    }).join('') : '<p class="muted">Rest day. Add an exercise to build ' + state.editDay + "'s regimen.</p>";
+    $('exList').querySelectorAll('.ex-edit').forEach(function (row) {
+      var i = +row.dataset.i;
+      row.querySelectorAll('input').forEach(function (inp) {
+        inp.oninput = function () { state.draft[i][inp.dataset.f] = inp.value; };
+      });
+      row.querySelectorAll('button').forEach(function (b) {
+        b.onclick = function () {
+          var a = b.dataset.act, dr = state.draft;
+          if (a === 'del') dr.splice(i, 1);
+          if (a === 'up' && i > 0) dr.splice(i - 1, 0, dr.splice(i, 1)[0]);
+          if (a === 'down' && i < dr.length - 1) dr.splice(i + 1, 0, dr.splice(i, 1)[0]);
+          renderDraft();
+        };
+      });
+    });
+  }
+
+  $('addExBtn').onclick = function () {
+    state.draft.push({ exercise: '', sets: '', reps: '', weight: '', notes: '' });
+    renderDraft();
+    var inputs = $('exList').querySelectorAll('input[data-f="exercise"]');
+    inputs[inputs.length - 1].focus();
+  };
+  $('copyFrom').onchange = function () {
+    var from = this.value; if (!from) return;
+    state.draft = (state.data.regimen[from] || []).map(function (x) { return Object.assign({}, x); });
+    this.value = '';
+    renderDraft();
+    toast('Copied ' + from + ' — click Save to keep it');
+  };
+  $('saveDayBtn').onclick = function () {
+    var btn = this; btn.disabled = true;
+    call('saveDayRegimen', state.editDay, state.draft).then(function (regimen) {
+      state.data.regimen = regimen;
+      selectDay(state.editDay);
+      renderToday();
+      toast(state.editDay + ' saved');
+    }).catch(fail).then(function () { btn.disabled = false; });
+  };
+  $('editTodayBtn').onclick = function () { showTab('week'); selectDay(state.data.dayName); };
+
+  // ---------- Today actions ----------
+  $('doneBtn').onclick = function () {
+    var btn = this, completed = !(state.data.log && state.data.log.completed);
+    btn.disabled = true;
+    call('saveLogEntry', state.data.today, completed, $('logNotes').value).then(function (log) {
+      state.data.log = log; renderToday(); toast(completed ? 'Nice work! Logged.' : 'Unmarked');
+    }).catch(fail).then(function () { btn.disabled = false; });
+  };
+  $('logNotes').onchange = function () {
+    var completed = !!(state.data.log && state.data.log.completed);
+    call('saveLogEntry', state.data.today, completed, this.value).then(function (log) {
+      state.data.log = log; toast('Notes saved');
+    }).catch(fail);
+  };
+  $('addEventBtn').onclick = function () {
+    var btn = this; btn.disabled = true;
+    call('addWorkoutToCalendar', state.data.today, $('workoutTime').value, $('workoutMinutes').value).then(function (events) {
+      state.data.events = events; renderEvents(); toast('Added to your calendar');
+    }).catch(fail).then(function () { btn.disabled = false; });
+  };
+
+  // ---------- Settings ----------
+  function renderSettings() {
+    var s = state.data.settings;
+    $('curLocation').textContent = s.locationName || 'not set';
+    $('units').value = s.units;
+    $('calendarId').value = s.calendarId;
+    $('workoutTime').value = s.workoutTime || '07:00';
+    $('workoutMinutes').value = s.workoutMinutes || '60';
+  }
+
+  function setLocation(name, lat, lon) {
+    return call('saveSettings', { locationName: name, latitude: lat, longitude: lon }).then(function (s) {
+      state.data.settings = s;
+      $('locResults').innerHTML = '';
+      renderSettings();
+      toast('Location set to ' + name);
+      return reloadWeather();
+    }).catch(fail);
+  }
+
+  function reloadWeather() {
+    return call('getWeather').then(function (w) {
+      state.data.weather = w; state.data.weatherError = null; renderWeather();
+    }).catch(function (e) { state.data.weatherError = e.message || String(e); renderWeather(); });
+  }
+
+  $('locSearchBtn').onclick = function () {
+    var q = $('locQuery').value.trim(); if (!q) return;
+    $('locResults').innerHTML = '<li class="muted">Searching…</li>';
+    call('searchLocation', q).then(function (results) {
+      $('locResults').innerHTML = results.length ? results.map(function (r, i) {
+        return '<li><a href="#" data-i="' + i + '">' + esc(r.name) + '</a></li>';
+      }).join('') : '<li class="muted">No matches.</li>';
+      $('locResults').querySelectorAll('a').forEach(function (a) {
+        a.onclick = function (e) { e.preventDefault(); var r = results[+a.dataset.i]; setLocation(r.name, r.latitude, r.longitude); };
+      });
+    }).catch(fail);
+  };
+  $('locQuery').onkeydown = function (e) { if (e.key === 'Enter') $('locSearchBtn').click(); };
+  $('geoBtn').onclick = function () {
+    if (!navigator.geolocation) return toast('Location not available in this browser');
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var lat = pos.coords.latitude.toFixed(4), lon = pos.coords.longitude.toFixed(4);
+      setLocation('My location (' + lat + ', ' + lon + ')', lat, lon);
+    }, function () { toast('Could not get your location — try searching by city instead'); });
+  };
+  $('units').onchange = function () {
+    call('saveSettings', { units: this.value }).then(function (s) { state.data.settings = s; return reloadWeather(); }).catch(fail);
+  };
+  $('calendarId').onchange = function () {
+    call('saveSettings', { calendarId: this.value }).then(function (s) {
+      state.data.settings = s; return call('getUpcomingEvents', 7);
+    }).then(function (events) {
+      state.data.events = events; state.data.calendarError = null; renderEvents(); toast('Calendar updated');
+    }).catch(fail);
+  };
+
+  // ---------- Boot ----------
+  call('getDashboard').then(function (data) {
+    state.data = data;
+    $('headerDate').textContent = parseDate(data.today).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+    renderWeather(); renderToday(); renderEvents(); renderSettings();
+    $('loading').classList.add('hidden');
+    showTab('today');
+    call('listCalendars').then(function (cals) {
+      $('calendarId').innerHTML = '<option value="primary">Primary calendar</option>' + cals.map(function (c) {
+        return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>';
+      }).join('');
+      $('calendarId').value = state.data.settings.calendarId;
+    }).catch(function () {});
+  }).catch(function (e) { $('loading').innerHTML = '<span class="error">Could not load: ' + esc(e.message || e) + '</span>'; });
+
+  // ---------- Demo data (only used when opened outside Apps Script) ----------
+  var DEMO = (function () {
+    var today = new Date(), iso = function (d) { return d.toISOString().slice(0, 10); };
+    var dayName = DAYS[(today.getDay() + 6) % 7];
+    var regimen = { Monday: [{ exercise: 'Back squat', sets: '5', reps: '5', weight: '225 lb', notes: '' },
+      { exercise: 'Romanian deadlift', sets: '3', reps: '8', weight: '185 lb', notes: '' }],
+      Tuesday: [{ exercise: 'Easy run', sets: '', reps: '5 km', weight: '', notes: 'Zone 2' }],
+      Wednesday: [{ exercise: 'Bench press', sets: '5', reps: '5', weight: '175 lb', notes: '' },
+        { exercise: 'Pull-ups', sets: '4', reps: '8', weight: '', notes: '' }],
+      Thursday: [], Friday: [{ exercise: 'Deadlift', sets: '3', reps: '5', weight: '275 lb', notes: '' }],
+      Saturday: [{ exercise: 'Long run', sets: '', reps: '10 km', weight: '', notes: '' }], Sunday: [] };
+    var settings = { locationName: 'Austin, Texas, United States', latitude: '30.27', longitude: '-97.74',
+      units: 'fahrenheit', calendarId: 'primary', workoutTime: '07:00', workoutMinutes: '60' };
+    var log = null, now = new Date(); now.setMinutes(0, 0, 0);
+    var weather = { location: settings.locationName, units: { temp: '°F', wind: 'mph', precip: 'in' },
+      current: { temp: 72, feelsLike: 74, humidity: 55, precipitation: 0, wind: 8, code: 2, isDay: true },
+      hourly: Array.from({ length: 12 }, function (_, i) { return { time: new Date(now.getTime() + i * 3600e3).toISOString(),
+        temp: 72 + Math.round(Math.sin(i / 3) * 5), precipChance: [0, 0, 5, 10, 20, 40, 30, 10, 0, 0, 0, 0][i], code: [2, 2, 3, 3, 61, 63, 61, 3, 2, 1, 0, 0][i] }; }),
+      daily: Array.from({ length: 7 }, function (_, i) { var d = new Date(today.getTime() + i * 864e5);
+        return { date: iso(d), code: [2, 61, 0, 1, 3, 95, 0][i], max: 78 + i % 3, min: 60 - i % 2, precipChance: [10, 60, 0, 5, 20, 70, 0][i],
+          sunrise: iso(d) + 'T07:15', sunset: iso(d) + 'T19:10', uv: 6 }; }) };
+    var events = [{ title: 'Team standup', date: iso(today), start: iso(today) + 'T09:30', end: iso(today) + 'T10:00', allDay: false },
+      { title: 'Dentist', date: iso(new Date(today.getTime() + 864e5)), start: iso(new Date(today.getTime() + 864e5)) + 'T14:00', allDay: false }];
+    return {
+      getDashboard: function () { return { today: iso(today), dayName: dayName, settings: settings, regimen: regimen, log: log, weather: weather, events: events }; },
+      getWeather: function () { return weather; },
+      getWeekRegimen: function () { return regimen; },
+      saveDayRegimen: function (day, ex) { regimen[day] = ex.filter(function (x) { return x.exercise; }); return JSON.parse(JSON.stringify(regimen)); },
+      saveLogEntry: function (d, c, n) { log = { date: d, completed: c, notes: n }; return log; },
+      saveSettings: function (p) { Object.assign(settings, p); return Object.assign({}, settings); },
+      searchLocation: function (q) { return [{ name: q + ' (demo)', latitude: 40, longitude: -74 }]; },
+      listCalendars: function () { return [{ id: 'demo@group.calendar.google.com', name: 'Training' }]; },
+      getUpcomingEvents: function () { return events; },
+      addWorkoutToCalendar: function (d, t) { events.push({ title: 'Training — ' + dayName, date: d, start: d + 'T' + t, allDay: false });
+        events.sort(function (a, b) { return a.start < b.start ? -1 : 1; }); return events; }
+    };
+  })();
+</script>
+</body>
+</html>
