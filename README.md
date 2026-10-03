@@ -3,7 +3,7 @@
 A personal daily dashboard web app that runs on Google Apps Script:
 
 - **Weather** for your area: current conditions, the next 12 hours, and a 7-day forecast (from [Open-Meteo](https://open-meteo.com), free, no API key).
-- **Google Calendar**: your events for the coming week, plus a one-tap button that adds today's workout to your calendar with the exercises in the event description.
+- **Google Calendar**: a full calendar view (month, week and agenda) of all your calendars, where you can add and delete events, plus a one-tap button that adds today's workout to your calendar with the exercises in the event description.
 - **Weekly training regimen** stored in a **Google Sheet**. Each day of the week (Monday–Sunday) has its own regimen. It repeats every week until you change it.
 - **Daily log**: mark today's training as done and add notes. These are saved to the sheet too.
 - **Calorie and macro tracker**: take or choose a photo of a meal and Gemini estimates each item's calories, protein, carbs and fat. You check and edit the numbers before they're saved to the sheet. You can also add food by hand. It shows your progress against daily goals and the last 7 days.
@@ -63,6 +63,7 @@ Everything runs from the repo root. You need [Node.js](https://nodejs.org) 20 or
 |---|---|
 | **Today** | Weather, today's regimen (based on the weekday), a "Mark as done" button with notes, your upcoming calendar events, and "Add today's workout" to your calendar. |
 | **Food** | Today's calories and macros against your goals, a 7-day history, **📷 Photo** to analyze a meal with Gemini, **+ Add manually**, and today's log, where you can delete entries. |
+| **Calendar** | Your Google Calendar in **Month**, **Week** or **Agenda** view. Move between weeks or months with ‹ ›, or jump back with **Today**. Every calendar you can see appears in its own colour, and you can tap a calendar's name to hide or show it. Tap a day to see its events and that day's training, or tap an event for details. **+ Event** adds an event. One-off events can be deleted here; repeating events are edited in Google Calendar. |
 | **Weekly regimen** | Choose a day (Mon–Sun) to add, edit, reorder, or remove exercises (Exercise / Sets / Reps / Weight / Notes). You can also copy another day's regimen. Click **Save**. |
 | **Settings** | Search for your city or use your current location, choose °F or °C, pick which calendar to use, set daily calorie and macro goals, and add your Gemini key. |
 

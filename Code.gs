@@ -208,6 +208,96 @@ function listCalendars() {
   });
 }
 
+// Google Calendar's event colour ids -> hex.
+var EVENT_COLORS = {
+  '1': '#7986cb', '2': '#33b679', '3': '#8e24aa', '4': '#e67c73', '5': '#f6bf26', '6': '#f4511e',
+  '7': '#039be5', '8': '#616161', '9': '#3f51b5', '10': '#0b8043', '11': '#d50000'
+};
+
+/**
+ * Events from every calendar you can see, between two dates (yyyy-MM-dd,
+ * end exclusive). Used by the Calendar tab.
+ */
+function getCalendarRange(startStr, endStr) {
+  var tz = timeZone_();
+  var start = parseLocal_(startStr);
+  var end = parseLocal_(endStr);
+  var defaultId = CalendarApp.getDefaultCalendar().getId();
+  var calendars = [];
+  var events = [];
+  CalendarApp.getAllCalendars().forEach(function (cal) {
+    var info = {
+      id: cal.getId(),
+      name: cal.getId() === defaultId ? 'My calendar' : cal.getName(),
+      color: cal.getColor(),
+      hidden: cal.isHidden(),
+      primary: cal.getId() === defaultId,
+      canEdit: cal.isOwnedByMe()
+    };
+    calendars.push(info);
+    var list;
+    try { list = cal.getEvents(start, end); } catch (e) { return; }
+    list.forEach(function (e) {
+      var allDay = e.isAllDayEvent();
+      var s = allDay ? e.getAllDayStartDate() : e.getStartTime();
+      var en = allDay ? e.getAllDayEndDate() : e.getEndTime();
+      events.push({
+        id: e.getId(),
+        calendarId: info.id,
+        title: e.getTitle() || '(No title)',
+        allDay: allDay,
+        start: Utilities.formatDate(s, tz, "yyyy-MM-dd'T'HH:mm"),
+        end: Utilities.formatDate(en, tz, "yyyy-MM-dd'T'HH:mm"),
+        location: e.getLocation(),
+        description: e.getDescription(),
+        color: EVENT_COLORS[e.getColor()] || info.color,
+        recurring: e.isRecurringEvent(),
+        canEdit: info.canEdit
+      });
+    });
+  });
+  events.sort(function (a, b) { return a.start < b.start ? -1 : a.start > b.start ? 1 : 0; });
+  calendars.sort(function (a, b) { return (b.primary - a.primary) || a.name.localeCompare(b.name); });
+  return { calendars: calendars, events: events };
+}
+
+/**
+ * Creates an event. ev: {calendarId, title, date, endDate?, allDay, startTime, endTime,
+ * location, description}. Dates are yyyy-MM-dd and times HH:mm.
+ */
+function createCalendarEvent(ev) {
+  if (!ev || !String(ev.title || '').trim()) throw new Error('Give the event a title.');
+  var cal = ev.calendarId ? CalendarApp.getCalendarById(ev.calendarId) : CalendarApp.getDefaultCalendar();
+  if (!cal) throw new Error('Calendar not found.');
+  var opts = { location: ev.location || '', description: ev.description || '' };
+  if (ev.allDay) {
+    var first = parseLocal_(ev.date, '12:00');
+    var last = parseLocal_(ev.endDate || ev.date, '12:00');
+    if (last < first) throw new Error('The end date is before the start date.');
+    // CalendarApp's all-day end date is exclusive.
+    var endExclusive = new Date(last.getTime() + 864e5);
+    if (endExclusive - first <= 864e5) cal.createAllDayEvent(ev.title.trim(), first, opts);
+    else cal.createAllDayEvent(ev.title.trim(), first, endExclusive, opts);
+  } else {
+    var start = parseLocal_(ev.date, ev.startTime || '09:00');
+    var end = parseLocal_(ev.endDate || ev.date, ev.endTime || ev.startTime || '10:00');
+    if (end <= start) end = new Date(start.getTime() + 3600e3);
+    cal.createEvent(ev.title.trim(), start, end, opts);
+  }
+  return true;
+}
+
+/** Deletes a one-off event (recurring events are edited in Google Calendar). */
+function deleteCalendarEvent(calendarId, eventId) {
+  var cal = CalendarApp.getCalendarById(calendarId);
+  if (!cal) throw new Error('Calendar not found.');
+  var ev = cal.getEventById(eventId);
+  if (!ev) throw new Error('Event not found. It may already be deleted.');
+  if (ev.isRecurringEvent()) throw new Error('This is a repeating event. Delete it in Google Calendar.');
+  ev.deleteEvent();
+  return true;
+}
+
 function getUpcomingEvents(days) {
   var tz = timeZone_();
   var start = parseLocal_(Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd'));
