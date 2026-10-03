@@ -23,7 +23,8 @@
       justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     header h1 { margin: 0; font-size: 22px; }
     header .date { color: var(--muted); }
-    nav { max-width: 980px; margin: 0 auto; padding: 0 16px; display: flex; gap: 6px; }
+    nav { max-width: 980px; margin: 0 auto; padding: 0 16px; display: flex; gap: 6px; overflow-x: auto; }
+    nav button { white-space: nowrap; }
     nav button { border: 0; background: transparent; color: var(--muted); padding: 8px 14px;
       border-radius: 999px; font: inherit; cursor: pointer; }
     nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
@@ -76,6 +77,27 @@
       color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
     .toast.show { opacity: 1; }
     .error { color: var(--danger); }
+    .kcal { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .kcal .big-temp { font-size: 40px; }
+    .bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 4px 0 10px; }
+    .bar > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+    .bar.over > span { background: var(--danger); }
+    .macro-row { display: flex; justify-content: space-between; font-size: 13px; }
+    .food-edit { display: grid; grid-template-columns: 2fr 1.2fr .8fr .7fr .7fr .7fr auto; gap: 6px;
+      align-items: center; padding: 6px 0; border-top: 1px solid var(--border); }
+    .food-edit.head { border-top: 0; font-size: 12px; color: var(--muted); }
+    .food-edit .icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
+    @media (max-width: 640px) {
+      .food-edit { grid-template-columns: 1fr 1fr 1fr 1fr; }
+      .food-edit > :first-child { grid-column: 1 / -1; }
+      .food-edit > :nth-child(2) { grid-column: 1 / -2; }
+      .food-edit.head { display: none; }
+    }
+    .photo-preview { max-width: 100%; max-height: 220px; border-radius: 10px; margin-top: 10px; display: block; }
+    .entry { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .entry .icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; }
+    .hist { display: grid; grid-template-columns: 44px 1fr 70px; gap: 8px; align-items: center; font-size: 13px; }
+    .hist .bar { margin: 0; }
   </style>
 </head>
 <body>
@@ -85,6 +107,7 @@
   </header>
   <nav>
     <button data-tab="today" class="active">Today</button>
+    <button data-tab="food">Food</button>
     <button data-tab="week">Weekly regimen</button>
     <button data-tab="settings">Settings</button>
   </nav>
@@ -112,6 +135,11 @@
         </div>
 
         <div class="card">
+          <h2><span>Calories today</span><button class="btn small" id="goFoodBtn">Log food</button></h2>
+          <div id="todayFood"></div>
+        </div>
+
+        <div class="card">
           <h2><span>Calendar</span></h2>
           <div id="eventsBody"></div>
           <label>Add today's workout to your calendar</label>
@@ -125,6 +153,58 @@
             <button class="btn primary" id="addEventBtn">Add</button>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- FOOD -->
+    <section id="tab-food" class="hidden">
+      <div class="grid">
+        <div class="card">
+          <h2><span>Today</span></h2>
+          <div id="foodSummary"></div>
+        </div>
+        <div class="card">
+          <h2><span>Last 7 days</span></h2>
+          <div id="foodHistory"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2><span>Add food</span></h2>
+        <div class="row">
+          <select id="mealSelect" style="max-width:160px">
+            <option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option>
+          </select>
+          <label class="btn primary" style="margin:0;color:#fff;text-align:center">📷 Photo
+            <input type="file" id="photoInput" accept="image/*" capture="environment" class="hidden">
+          </label>
+          <button class="btn" id="manualBtn">+ Add manually</button>
+        </div>
+        <p class="muted small" id="geminiHint"></p>
+        <img id="photoPreview" class="photo-preview hidden" alt="">
+        <div id="photoExtra" class="hidden">
+          <label for="photoDesc">Anything Gemini should know? (optional)</label>
+          <div class="row">
+            <input id="photoDesc" placeholder="e.g. cooked in olive oil, large portion, diet soda">
+            <button class="btn primary" id="analyzeBtn">Analyze</button>
+          </div>
+        </div>
+        <p class="muted small" id="analyzeStatus"></p>
+        <div id="reviewBox" class="hidden">
+          <div class="food-edit head"><span>Food</span><span>Portion</span><span>kcal</span><span>Protein g</span><span>Carbs g</span><span>Fat g</span><span></span></div>
+          <div id="reviewList"></div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn" id="reviewAddBtn">+ Add item</button>
+            <span class="muted small" id="reviewTotal"></span>
+            <button class="btn" id="reviewCancelBtn">Cancel</button>
+            <button class="btn primary" id="reviewSaveBtn">Save to log</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2><span>Today's log</span></h2>
+        <div id="foodLog"></div>
       </div>
     </section>
 
@@ -170,6 +250,31 @@
           <label for="calendarId">Calendar to show and add workouts to</label>
           <select id="calendarId"><option value="primary">Primary calendar</option></select>
           <p class="muted small">The app uses the Google account that deployed it.</p>
+        </div>
+        <div class="card">
+          <h2>Daily goals</h2>
+          <div class="row">
+            <div><label for="calorieGoal">Calories</label><input id="calorieGoal" type="number" min="0"></div>
+            <div><label for="proteinGoal">Protein (g)</label><input id="proteinGoal" type="number" min="0"></div>
+          </div>
+          <div class="row">
+            <div><label for="carbsGoal">Carbs (g)</label><input id="carbsGoal" type="number" min="0"></div>
+            <div><label for="fatGoal">Fat (g)</label><input id="fatGoal" type="number" min="0"></div>
+          </div>
+          <div class="row" style="margin-top:10px"><button class="btn primary" id="saveGoalsBtn">Save goals</button></div>
+        </div>
+        <div class="card">
+          <h2>Gemini (food photos)</h2>
+          <p class="small">Status: <b id="geminiStatus">not set</b></p>
+          <label for="geminiKey">API key</label>
+          <div class="row">
+            <input id="geminiKey" type="password" placeholder="Paste a key from aistudio.google.com" autocomplete="off">
+            <button class="btn" id="saveKeyBtn">Save key</button>
+          </div>
+          <p class="muted small">Stored privately in the Apps Script project, not in your sheet. Get a key at
+            <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>.</p>
+          <label for="geminiModel">Model</label>
+          <input id="geminiModel" placeholder="gemini-3.8-flash">
         </div>
       </div>
     </section>
@@ -236,7 +341,7 @@
   // ---------- Tabs ----------
   function showTab(name) {
     document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
-    ['today', 'week', 'settings'].forEach(function (t) { $('tab-' + t).classList.toggle('hidden', t !== name); });
+    ['today', 'food', 'week', 'settings'].forEach(function (t) { $('tab-' + t).classList.toggle('hidden', t !== name); });
     if (name === 'week' && !state.editDay) selectDay(state.data.dayName);
   }
   document.querySelectorAll('nav button').forEach(function (b) {
@@ -408,7 +513,25 @@
     $('calendarId').value = s.calendarId;
     $('workoutTime').value = s.workoutTime || '07:00';
     $('workoutMinutes').value = s.workoutMinutes || '60';
+    ['calorie', 'protein', 'carbs', 'fat'].forEach(function (k) { $(k + 'Goal').value = s[k + 'Goal']; });
+    $('geminiModel').value = s.geminiModel || '';
   }
+  $('saveGoalsBtn').onclick = function () {
+    var p = {};
+    ['calorie', 'protein', 'carbs', 'fat'].forEach(function (k) { p[k + 'Goal'] = $(k + 'Goal').value; });
+    call('saveSettings', p).then(function (s) { state.data.settings = s; renderFood(); toast('Goals saved'); }).catch(fail);
+  };
+  $('saveKeyBtn').onclick = function () {
+    call('saveGeminiKey', $('geminiKey').value).then(function (ok) {
+      state.data.geminiConfigured = ok; $('geminiKey').value = ''; renderFood();
+      toast(ok ? 'Gemini key saved' : 'Gemini key removed');
+    }).catch(fail);
+  };
+  $('geminiModel').onchange = function () {
+    call('saveSettings', { geminiModel: this.value.trim() || 'gemini-3.8-flash' }).then(function (s) {
+      state.data.settings = s; renderSettings(); toast('Model saved');
+    }).catch(fail);
+  };
 
   function setLocation(name, lat, lon) {
     return call('saveSettings', { locationName: name, latitude: lat, longitude: lon }).then(function (s) {
@@ -457,11 +580,151 @@
     }).catch(fail);
   };
 
+  // ---------- Food ----------
+  var review = [];
+  function sum(list, k) { return list.reduce(function (t, x) { return t + (Number(x[k]) || 0); }, 0); }
+  function goal(k) { return Number(state.data.settings[k + 'Goal']) || 0; }
+  function bar(value, target) {
+    var pct = target ? Math.min(100, value / target * 100) : 0;
+    return '<div class="bar' + (target && value > target ? ' over' : '') + '"><span style="width:' + pct + '%"></span></div>';
+  }
+  function macroBlock(list) {
+    var kcal = sum(list, 'calories'), g = goal('calorie'), left = g - kcal;
+    var html = '<div class="kcal"><span class="big-temp">' + r0(kcal) + '</span><span class="muted">/ ' + g + ' kcal</span>' +
+      '<span class="muted small">' + (left >= 0 ? r0(left) + ' left' : r0(-left) + ' over') + '</span></div>' + bar(kcal, g);
+    [['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat']].forEach(function (m) {
+      var v = sum(list, m[0]);
+      html += '<div class="macro-row"><span>' + m[1] + '</span><span class="muted">' + r0(v) + ' / ' + goal(m[0]) + ' g</span></div>' + bar(v, goal(m[0]));
+    });
+    return html;
+  }
+  function renderFood() {
+    var d = state.data, list = d.food || [];
+    $('foodSummary').innerHTML = macroBlock(list);
+    $('todayFood').innerHTML = macroBlock(list);
+    var g = goal('calorie');
+    $('foodHistory').innerHTML = (d.foodHistory || []).map(function (h) {
+      return '<div class="hist"><span class="muted">' + (h.date === d.today ? 'Today' : parseDate(h.date).toLocaleDateString([], { weekday: 'short' })) +
+        '</span>' + bar(h.calories, g) + '<span style="text-align:right">' + r0(h.calories) + '</span></div>';
+    }).join('');
+    var meals = ['Breakfast', 'Lunch', 'Dinner', 'Snack'], html = '';
+    list.forEach(function (f) { if (meals.indexOf(f.meal) === -1) meals.push(f.meal); });
+    meals.forEach(function (meal) {
+      var items = list.filter(function (f) { return f.meal === meal; });
+      if (!items.length) return;
+      html += '<div class="event-day">' + esc(meal || 'Other') + ' · ' + r0(sum(items, 'calories')) + ' kcal</div><ul class="plain">' +
+        items.map(function (f) {
+          return '<li class="entry"><div><div class="ex-name">' + esc(f.food) + (f.source === 'Gemini' ? ' <span class="muted small">📷</span>' : '') + '</div>' +
+            '<div class="muted small">' + (f.portion ? esc(f.portion) + ' · ' : '') + r0(f.calories) + ' kcal · P ' + r0(f.protein) +
+            ' · C ' + r0(f.carbs) + ' · F ' + r0(f.fat) + '</div></div>' +
+            '<button class="icon" data-id="' + esc(f.id) + '" title="Delete">✕</button></li>';
+        }).join('') + '</ul>';
+    });
+    $('foodLog').innerHTML = html || '<p class="muted">Nothing logged yet today.</p>';
+    $('foodLog').querySelectorAll('button[data-id]').forEach(function (b) {
+      b.onclick = function () {
+        if (!confirm('Delete this entry?')) return;
+        call('deleteFoodEntry', b.dataset.id, d.today).then(applyFood).catch(fail);
+      };
+    });
+    $('geminiHint').textContent = d.geminiConfigured ? 'Take or choose a photo and Gemini estimates the calories and macros. You can edit them before saving.'
+      : 'To use photos, add your Gemini API key in Settings. You can still add food manually.';
+    $('geminiStatus').textContent = d.geminiConfigured ? 'key saved' : 'not set';
+  }
+  function applyFood(res) { state.data.food = res.food; state.data.foodHistory = res.foodHistory; renderFood(); }
+
+  function renderReview() {
+    $('reviewBox').classList.toggle('hidden', !review.length);
+    var fields = [['food', 'Food', 'text'], ['portion', 'Portion', 'text'], ['calories', 'kcal', 'number'],
+      ['protein', 'Prot g', 'number'], ['carbs', 'Carb g', 'number'], ['fat', 'Fat g', 'number']];
+    $('reviewList').innerHTML = review.map(function (x, i) {
+      return '<div class="food-edit" data-i="' + i + '">' + fields.map(function (f) {
+        return '<input data-f="' + f[0] + '" type="' + f[2] + '" step="any" placeholder="' + f[1] + '" value="' + esc(x[f[0]]) + '">';
+      }).join('') + '<button class="icon" title="Remove">✕</button></div>';
+    }).join('');
+    $('reviewList').querySelectorAll('.food-edit').forEach(function (row) {
+      var i = +row.dataset.i;
+      row.querySelectorAll('input').forEach(function (inp) {
+        inp.oninput = function () { review[i][inp.dataset.f] = inp.value; updateReviewTotal(); };
+      });
+      row.querySelector('button').onclick = function () { review.splice(i, 1); renderReview(); };
+    });
+    updateReviewTotal();
+  }
+  function updateReviewTotal() {
+    $('reviewTotal').textContent = review.length ? 'Total ' + r0(sum(review, 'calories')) + ' kcal · P ' + r0(sum(review, 'protein')) +
+      ' · C ' + r0(sum(review, 'carbs')) + ' · F ' + r0(sum(review, 'fat')) : '';
+  }
+  function blankItem() { return { food: '', portion: '', calories: '', protein: '', carbs: '', fat: '' }; }
+  function resetPhoto() {
+    pendingPhoto = null; $('photoInput').value = ''; $('photoDesc').value = '';
+    $('photoPreview').classList.add('hidden'); $('photoExtra').classList.add('hidden'); $('analyzeStatus').textContent = '';
+  }
+
+  // Shrink the photo before upload: faster, and well within Gemini's limits.
+  function resizeImage(file, maxSide) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function () {
+        var img = new Image();
+        img.onerror = function () { reject(new Error('Could not read that image')); };
+        img.onload = function () {
+          var scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  var pendingPhoto = null;
+  $('photoInput').onchange = function () {
+    var file = this.files && this.files[0]; if (!file) return;
+    resizeImage(file, 1280).then(function (dataUrl) {
+      pendingPhoto = dataUrl;
+      $('photoPreview').src = dataUrl; $('photoPreview').classList.remove('hidden');
+      $('photoExtra').classList.remove('hidden'); $('analyzeStatus').textContent = '';
+      if (!state.data.geminiConfigured) $('analyzeStatus').textContent = 'Add your Gemini API key in Settings to analyze photos.';
+    }).catch(fail);
+  };
+  $('analyzeBtn').onclick = function () {
+    if (!pendingPhoto) return;
+    var btn = this; btn.disabled = true; $('analyzeStatus').textContent = 'Asking Gemini…';
+    call('analyzeFoodImage', pendingPhoto.split(',')[1], 'image/jpeg', $('photoDesc').value).then(function (res) {
+      review = review.concat(res.items.map(function (x) { x.source = 'Gemini'; return x; }));
+      $('analyzeStatus').textContent = res.items.length ? 'Check the estimates, edit anything that looks off, then save.' + (res.notes ? ' Note: ' + res.notes : '')
+        : (res.notes || 'No food found in that photo.');
+      renderReview();
+    }).catch(function (e) { $('analyzeStatus').textContent = ''; fail(e); }).then(function () { btn.disabled = false; });
+  };
+  $('manualBtn').onclick = function () { review.push(blankItem()); renderReview(); };
+  $('reviewAddBtn').onclick = function () { review.push(blankItem()); renderReview(); };
+  $('reviewCancelBtn').onclick = function () { review = []; renderReview(); resetPhoto(); };
+  $('reviewSaveBtn').onclick = function () {
+    var btn = this, items = review.filter(function (x) { return String(x.food).trim(); });
+    if (!items.length) return toast('Add a food name first');
+    var source = items.some(function (x) { return x.source === 'Gemini'; }) ? 'Gemini' : 'Manual';
+    btn.disabled = true;
+    call('addFoodEntries', state.data.today, $('mealSelect').value, items, source).then(function (res) {
+      applyFood(res); review = []; renderReview(); resetPhoto(); toast('Saved to your food log');
+    }).catch(fail).then(function () { btn.disabled = false; });
+  };
+  $('goFoodBtn').onclick = function () { showTab('food'); };
+
+  // Pick a sensible default meal for the time of day.
+  (function () { var h = new Date().getHours();
+    $('mealSelect').value = h < 11 ? 'Breakfast' : h < 15 ? 'Lunch' : h < 21 ? 'Dinner' : 'Snack'; })();
+
   // ---------- Boot ----------
   call('getDashboard').then(function (data) {
     state.data = data;
     $('headerDate').textContent = parseDate(data.today).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-    renderWeather(); renderToday(); renderEvents(); renderSettings();
+    renderWeather(); renderToday(); renderEvents(); renderSettings(); renderFood();
     $('loading').classList.add('hidden');
     showTab('today');
     call('listCalendars').then(function (cals) {
@@ -484,7 +747,14 @@
       Thursday: [], Friday: [{ exercise: 'Deadlift', sets: '3', reps: '5', weight: '275 lb', notes: '' }],
       Saturday: [{ exercise: 'Long run', sets: '', reps: '10 km', weight: '', notes: '' }], Sunday: [] };
     var settings = { locationName: 'Austin, Texas, United States', latitude: '30.27', longitude: '-97.74',
-      units: 'fahrenheit', calendarId: 'primary', workoutTime: '07:00', workoutMinutes: '60' };
+      units: 'fahrenheit', calendarId: 'primary', workoutTime: '07:00', workoutMinutes: '60',
+      calorieGoal: '2200', proteinGoal: '160', carbsGoal: '220', fatGoal: '70', geminiModel: 'gemini-3.8-flash' };
+    var food = [{ id: 'a', date: iso(today), time: '08:10', meal: 'Breakfast', food: 'Greek yogurt with berries', portion: '250 g',
+      calories: 280, protein: 22, carbs: 30, fat: 7, source: 'Gemini' },
+      { id: 'b', date: iso(today), time: '08:10', meal: 'Breakfast', food: 'Black coffee', portion: '1 cup', calories: 5, protein: 0, carbs: 0, fat: 0, source: 'Manual' }];
+    var hist = function () { return Array.from({ length: 7 }, function (_, i) { var d = iso(new Date(today.getTime() - (6 - i) * 864e5));
+      return { date: d, calories: i === 6 ? food.reduce(function (t, f) { return t + f.calories; }, 0) : [2100, 2350, 1980, 2240, 2050, 2400][i], protein: 0, carbs: 0, fat: 0 }; }); };
+    var keySet = false;
     var log = null, now = new Date(); now.setMinutes(0, 0, 0);
     var weather = { location: settings.locationName, units: { temp: '°F', wind: 'mph', precip: 'in' },
       current: { temp: 72, feelsLike: 74, humidity: 55, precipitation: 0, wind: 8, code: 2, isDay: true },
@@ -496,7 +766,15 @@
     var events = [{ title: 'Team standup', date: iso(today), start: iso(today) + 'T09:30', end: iso(today) + 'T10:00', allDay: false },
       { title: 'Dentist', date: iso(new Date(today.getTime() + 864e5)), start: iso(new Date(today.getTime() + 864e5)) + 'T14:00', allDay: false }];
     return {
-      getDashboard: function () { return { today: iso(today), dayName: dayName, settings: settings, regimen: regimen, log: log, weather: weather, events: events }; },
+      getDashboard: function () { return { today: iso(today), dayName: dayName, settings: settings, regimen: regimen, log: log, weather: weather, events: events,
+        food: food, foodHistory: hist(), geminiConfigured: keySet }; },
+      saveGeminiKey: function (k) { keySet = !!k; return keySet; },
+      analyzeFoodImage: function () { return { items: [{ food: 'Grilled chicken breast', portion: '150 g', calories: 248, protein: 46, carbs: 0, fat: 5.4 },
+        { food: 'White rice', portion: '1 cup', calories: 205, protein: 4.3, carbs: 45, fat: 0.4 }], notes: 'Portions estimated from plate size.' }; },
+      addFoodEntries: function (d, meal, items, source) { items.forEach(function (x, i) { food.push({ id: 'n' + Date.now() + i, date: d, meal: meal, food: x.food,
+        portion: x.portion, calories: +x.calories || 0, protein: +x.protein || 0, carbs: +x.carbs || 0, fat: +x.fat || 0, source: source }); });
+        return { food: food.slice(), foodHistory: hist() }; },
+      deleteFoodEntry: function (id) { food = food.filter(function (f) { return f.id !== id; }); return { food: food.slice(), foodHistory: hist() }; },
       getWeather: function () { return weather; },
       getWeekRegimen: function () { return regimen; },
       saveDayRegimen: function (day, ex) { regimen[day] = ex.filter(function (x) { return x.exercise; }); return JSON.parse(JSON.stringify(regimen)); },

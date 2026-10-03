@@ -5,6 +5,8 @@
  * - Your Google Calendar (today + the coming week)
  * - A weekly training regimen stored in this Google Sheet. Each day of the
  *   week has its own regimen that repeats every week until you change it.
+ * - A calorie and macro tracker. Snap a photo of a meal and Gemini estimates
+ *   calories, protein, carbs and fat; you review it, then it's saved here.
  *
  * The script must be bound to the spreadsheet (Extensions > Apps Script),
  * which is where all data lives.
@@ -15,7 +17,9 @@ var DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 
 var SHEETS = {
   regimen: { name: 'Regimen', headers: ['Day', 'Order', 'Exercise', 'Sets', 'Reps', 'Weight', 'Notes'] },
   settings: { name: 'Settings', headers: ['Key', 'Value'] },
-  log: { name: 'Log', headers: ['Date', 'Day', 'Completed', 'Notes', 'Logged At'] }
+  log: { name: 'Log', headers: ['Date', 'Day', 'Completed', 'Notes', 'Logged At'] },
+  food: { name: 'Food Log', headers: ['Date', 'Time', 'Meal', 'Food', 'Portion', 'Calories',
+    'Protein (g)', 'Carbs (g)', 'Fat (g)', 'Source', 'ID'] }
 };
 
 var DEFAULT_SETTINGS = {
@@ -25,8 +29,16 @@ var DEFAULT_SETTINGS = {
   units: 'fahrenheit',       // or 'celsius'
   calendarId: 'primary',
   workoutTime: '07:00',
-  workoutMinutes: '60'
+  workoutMinutes: '60',
+  calorieGoal: '2000',
+  proteinGoal: '150',
+  carbsGoal: '200',
+  fatGoal: '65',
+  geminiModel: 'gemini-3.8-flash'
 };
+
+// The Gemini API key is kept in Script Properties (never in the sheet).
+var GEMINI_KEY_PROP = 'GEMINI_API_KEY';
 
 // ---------------------------------------------------------------------------
 // Web app entry point
@@ -56,7 +68,10 @@ function getDashboard() {
     weather: null,
     weatherError: null,
     events: [],
-    calendarError: null
+    calendarError: null,
+    food: getFoodDay(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
+    foodHistory: getFoodHistory(7),
+    geminiConfigured: isGeminiConfigured()
   };
   if (settings.latitude !== '' && settings.longitude !== '') {
     try { result.weather = getWeather(); } catch (e) { result.weatherError = String(e.message || e); }
@@ -314,6 +329,179 @@ function saveLogEntry(dateStr, completed, notes) {
   sheet.appendRow(row);
   sheet.getRange(sheet.getLastRow(), 1).setNumberFormat('@').setValue(dateStr);
   return getLogEntry(dateStr);
+}
+
+// ---------------------------------------------------------------------------
+// Calorie & macro tracker
+// ---------------------------------------------------------------------------
+
+var FOOD_COL = { date: 0, time: 1, meal: 2, food: 3, portion: 4, calories: 5, protein: 6, carbs: 7, fat: 8, source: 9, id: 10 };
+
+function rowToFood_(r) {
+  return {
+    id: String(r[FOOD_COL.id]),
+    date: normalizeDate_(r[FOOD_COL.date]),
+    time: r[FOOD_COL.time] instanceof Date ? Utilities.formatDate(r[FOOD_COL.time], timeZone_(), 'HH:mm') : String(r[FOOD_COL.time]),
+    meal: String(r[FOOD_COL.meal]),
+    food: String(r[FOOD_COL.food]),
+    portion: String(r[FOOD_COL.portion]),
+    calories: Number(r[FOOD_COL.calories]) || 0,
+    protein: Number(r[FOOD_COL.protein]) || 0,
+    carbs: Number(r[FOOD_COL.carbs]) || 0,
+    fat: Number(r[FOOD_COL.fat]) || 0,
+    source: String(r[FOOD_COL.source])
+  };
+}
+
+function foodRows_() {
+  return sheet_(SHEETS.food).getDataRange().getValues().slice(1)
+    .filter(function (r) { return r[FOOD_COL.food] !== '' || r[FOOD_COL.calories] !== ''; })
+    .map(rowToFood_);
+}
+
+/** All food entries for one date (yyyy-MM-dd). */
+function getFoodDay(dateStr) {
+  return foodRows_().filter(function (f) { return f.date === dateStr; });
+}
+
+/** Daily totals for the last `days` days, oldest first. */
+function getFoodHistory(days) {
+  var tz = timeZone_();
+  var totals = {};
+  var dates = [];
+  for (var i = (days || 7) - 1; i >= 0; i--) {
+    var d = Utilities.formatDate(new Date(Date.now() - i * 864e5), tz, 'yyyy-MM-dd');
+    dates.push(d);
+    totals[d] = { date: d, calories: 0, protein: 0, carbs: 0, fat: 0 };
+  }
+  foodRows_().forEach(function (f) {
+    var t = totals[f.date];
+    if (!t) return;
+    t.calories += f.calories; t.protein += f.protein; t.carbs += f.carbs; t.fat += f.fat;
+  });
+  return dates.map(function (d) { return totals[d]; });
+}
+
+/**
+ * Saves one or more food items for a date. Each item:
+ * {food, portion, calories, protein, carbs, fat}. Returns the day's entries.
+ */
+function addFoodEntries(dateStr, meal, items, source) {
+  var sheet = sheet_(SHEETS.food);
+  var time = Utilities.formatDate(new Date(), timeZone_(), 'HH:mm');
+  var rows = (items || [])
+    .filter(function (x) { return x && String(x.food || '').trim() !== ''; })
+    .map(function (x) {
+      return [dateStr, time, meal || '', String(x.food).trim(), x.portion || '',
+        num_(x.calories), num_(x.protein), num_(x.carbs), num_(x.fat), source || 'Manual', Utilities.getUuid()];
+    });
+  if (rows.length) {
+    var start = sheet.getLastRow() + 1;
+    sheet.getRange(start, 1, rows.length, 2).setNumberFormat('@');
+    sheet.getRange(start, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  return { food: getFoodDay(dateStr), foodHistory: getFoodHistory(7) };
+}
+
+function deleteFoodEntry(id, dateStr) {
+  var sheet = sheet_(SHEETS.food);
+  var ids = sheet.getRange(1, FOOD_COL.id + 1, sheet.getLastRow(), 1).getValues();
+  for (var i = ids.length - 1; i >= 1; i--) {
+    if (String(ids[i][0]) === String(id)) { sheet.deleteRow(i + 1); break; }
+  }
+  return { food: getFoodDay(dateStr), foodHistory: getFoodHistory(7) };
+}
+
+function num_(v) {
+  var n = Number(v);
+  return isFinite(n) ? Math.round(n * 10) / 10 : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Gemini: estimate macros from a food photo
+// ---------------------------------------------------------------------------
+
+function isGeminiConfigured() {
+  return !!PropertiesService.getScriptProperties().getProperty(GEMINI_KEY_PROP);
+}
+
+/** Stores the Gemini API key privately. Pass '' to remove it. */
+function saveGeminiKey(key) {
+  var props = PropertiesService.getScriptProperties();
+  key = String(key || '').trim();
+  if (key) props.setProperty(GEMINI_KEY_PROP, key); else props.deleteProperty(GEMINI_KEY_PROP);
+  return isGeminiConfigured();
+}
+
+/**
+ * Sends a food photo (base64, no data: prefix) to Gemini and returns
+ * { items: [{food, portion, calories, protein, carbs, fat}], notes }.
+ * Nothing is saved until the user confirms with addFoodEntries().
+ */
+function analyzeFoodImage(base64, mimeType, description) {
+  var key = PropertiesService.getScriptProperties().getProperty(GEMINI_KEY_PROP);
+  if (!key) throw new Error('Add your Gemini API key in Settings first.');
+  var model = getSettings().geminiModel || DEFAULT_SETTINGS.geminiModel;
+
+  var prompt = [
+    'You are a nutrition assistant. Identify each distinct food or drink in this photo and estimate',
+    'its portion size and nutrition. Use visual cues (plate size, utensils, packaging) to judge portions.',
+    description ? 'Extra details from the user: ' + description : '',
+    'Respond with JSON only, in exactly this shape:',
+    '{"items":[{"food":"string","portion":"string, e.g. 150 g or 1 cup","calories":number,',
+    '"protein":number,"carbs":number,"fat":number}],"notes":"string, short caveats or empty"}',
+    'calories are kcal; protein, carbs and fat are grams. If there is no food in the image,',
+    'return {"items":[],"notes":"No food found"}.'
+  ].join(' ');
+
+  var body = {
+    contents: [{
+      role: 'user',
+      parts: [
+        { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64 } },
+        { text: prompt }
+      ]
+    }],
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
+  };
+
+  var res = UrlFetchApp.fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent',
+    {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-goog-api-key': key },
+      payload: JSON.stringify(body),
+      muteHttpExceptions: true
+    }
+  );
+  var code = res.getResponseCode();
+  var data = JSON.parse(res.getContentText() || '{}');
+  if (code !== 200) {
+    var msg = data.error && data.error.message ? data.error.message : res.getContentText();
+    throw new Error('Gemini error (' + code + '): ' + msg);
+  }
+
+  var parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+  var text = parts.map(function (p) { return p.text || ''; }).join('').trim();
+  // Strip ```json fences in case the model adds them.
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+  var parsed;
+  try { parsed = JSON.parse(text); } catch (e) { throw new Error('Could not read Gemini\'s answer. Try another photo.'); }
+
+  return {
+    items: (parsed.items || []).map(function (x) {
+      return {
+        food: String(x.food || ''),
+        portion: String(x.portion || ''),
+        calories: num_(x.calories),
+        protein: num_(x.protein),
+        carbs: num_(x.carbs),
+        fat: num_(x.fat)
+      };
+    }),
+    notes: String(parsed.notes || '')
+  };
 }
 
 // ---------------------------------------------------------------------------
