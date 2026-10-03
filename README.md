@@ -15,9 +15,11 @@ Because the app runs inside Google Apps Script, it already has access to your Sh
 1. **Create the Google Sheet.** Go to [sheets.new](https://sheets.new) and name it something like "Daily Helper".
 2. **Open Apps Script.** In the sheet, choose **Extensions → Apps Script**.
 3. **Add the code.**
-   - Replace the contents of `Code.gs` with [`src/Code.gs`](src/Code.gs).
-   - Click **+ → HTML**, name the file `Index` (Apps Script adds `.html`), and paste in [`src/Index.html`](src/Index.html).
-   - Click **Project Settings** (the gear icon), tick **Show "appsscript.json" manifest file in editor**, then go back to the editor and replace `appsscript.json` with [`src/appsscript.json`](src/appsscript.json).
+   - Replace the contents of `Code.gs` with [`Code.gs`](Code.gs).
+   - Click **+ → HTML**, name the file `index` (lowercase; Apps Script adds `.html`), and paste in [`index.html`](index.html).
+   - Click **Project Settings** (the gear icon), tick **Show "appsscript.json" manifest file in editor**, then go back to the editor and replace `appsscript.json` with [`appsscript.json`](appsscript.json).
+
+   Or skip the copy and paste and push from this folder with clasp (see below).
    - In **Project Settings**, set the **Time zone** to your own. Also check that the sheet's time zone (**File → Settings** in the sheet) is correct. The app uses it to work out which day it is.
 4. **Deploy.** Click **Deploy → New deployment → Select type: Web app**.
    - *Execute as:* **Me**
@@ -36,8 +38,24 @@ The key is stored in the Apps Script project's Script Properties, not in the she
 ### Updating later
 After you change the code, go to **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy**. The URL stays the same.
 
-### Using clasp (optional)
-If you'd rather push from this repo, use [clasp](https://github.com/google/clasp): run `clasp clone <scriptId> --rootDir src`, then `clasp push`.
+### Push from this repo with clasp (optional)
+Everything runs from the repo root. You need [Node.js](https://nodejs.org) 20 or later.
+
+1. Turn on the Apps Script API once at [script.google.com/home/usersettings](https://script.google.com/home/usersettings).
+2. In the sheet's Apps Script editor, open **Project Settings** and copy the **Script ID**.
+3. From the repo root:
+
+   ```sh
+   npm install
+   npm run login                                  # sign in to Google
+   echo '{"scriptId":"PASTE_SCRIPT_ID","rootDir":"."}' > .clasp.json
+   npm run push                                   # uploads Code.gs, index.html, appsscript.json
+   ```
+
+   `push` replaces the files in the Apps Script project with these three.
+4. Deploy the first time from the editor (step 4 above). After later pushes, go to **Deploy → Manage deployments → Edit → New version** so the web app link keeps working.
+
+`.claspignore` makes sure only the three app files are uploaded. `npm run open` opens the Apps Script editor.
 
 ## Using the app
 
@@ -69,4 +87,20 @@ Days with no rows count as rest days.
 
 ## Preview without Google
 
-Open `src/Index.html` directly in a browser to try the interface with demo data.
+From the repo root, run:
+
+```sh
+npm start
+```
+
+Then open http://localhost:3000 to try the app with demo data. No Google account or key is needed, and nothing is saved. You can also open `index.html` directly in a browser.
+
+## Files
+
+| File | What it is |
+|---|---|
+| `Code.gs` | Server code that runs in Apps Script: Sheets, Calendar, weather and Gemini |
+| `index.html` | The web app page, with built-in demo data for local preview |
+| `appsscript.json` | Apps Script manifest: permissions, time zone and web app settings |
+| `server.js` | Local preview server used by `npm start` |
+| `package.json` | `npm start`, plus clasp scripts for pushing to Apps Script |

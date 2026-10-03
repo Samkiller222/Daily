@@ -1,0 +1,5 @@
+# Only these files are uploaded to Apps Script
+**/**
+!Code.gs
+!index.html
+!appsscript.json

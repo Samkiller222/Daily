@@ -46,7 +46,7 @@ var GEMINI_KEY_PROP = 'GEMINI_API_KEY';
 
 function doGet() {
   ensureSheets_();
-  return HtmlService.createTemplateFromFile('Index')
+  return HtmlService.createTemplateFromFile('index')
     .evaluate()
     .setTitle('Daily Helper')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
