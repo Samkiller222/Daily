@@ -1,0 +1,60 @@
+# Uploads the app to Google Apps Script and updates the live web app
+# whenever code changes on the repo's default branch.
+#
+# Needs one repository secret: CLASPRC_JSON (the contents of ~/.clasprc.json
+# from `clasp login`). See README → "Automatic updates from GitHub".
+name: Deploy to Apps Script
+
+on:
+  push:
+    paths:
+      - Code.gs
+      - index.html
+      - appsscript.json
+      - .github/workflows/deploy-apps-script.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-apps-script
+  cancel-in-progress: false
+
+env:
+  # Not secret: these identify the project and the web app link to update.
+  SCRIPT_ID: 1LabUTYNhcHyZlkujeG2gaQSmwm_eR6FWNtaRstYwBpqjgG8jiMGo71_1
+  DEPLOYMENT_ID: AKfycbx7e5SedAR5vrDBfek8EfgrFUWORv80hxuFTH3qOD3937q72I2-EhMkCDdkq1FcMIY
+
+jobs:
+  deploy:
+    # Only the default branch goes live; other branches are ignored.
+    if: github.ref_name == github.event.repository.default_branch || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Write clasp credentials
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::error::Add the CLASPRC_JSON repository secret first (see README)."
+            exit 1
+          fi
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          printf '{"scriptId":"%s","rootDir":"."}' "$SCRIPT_ID" > .clasp.json
+
+      - name: Upload code
+        run: npx clasp push --force
+
+      - name: Publish new version to the existing web app link
+        run: npx clasp update-deployment "$DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA::7}"
+
+      - name: Remove credentials
+        if: always()
+        run: rm -f ~/.clasprc.json

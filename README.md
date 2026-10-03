@@ -57,6 +57,16 @@ Everything runs from the repo root. You need [Node.js](https://nodejs.org) 20 or
 
 `.claspignore` makes sure only the three app files are uploaded. `npm run open` opens the Apps Script editor.
 
+### Automatic updates from GitHub
+`.github/workflows/deploy-apps-script.yml` uploads the code and updates the live web app every time `Code.gs`, `index.html` or `appsscript.json` changes on the repo's default branch. The web app link stays the same. You can also run it by hand from the **Actions** tab (**Deploy to Apps Script → Run workflow**).
+
+It needs one repository secret:
+1. Sign in with `npm run login` (or `npx clasp login --no-localhost` on a machine without a browser).
+2. Copy the whole contents of `~/.clasprc.json`.
+3. On GitHub go to **Settings → Secrets and variables → Actions → New repository secret**, name it `CLASPRC_JSON`, and paste the contents in.
+
+The secret gives access to your Apps Script projects, so keep the repo private or limit who can edit it. To cancel it, remove "clasp" at [myaccount.google.com/permissions](https://myaccount.google.com/permissions). The script and deployment IDs are set at the top of the workflow file.
+
 ## Using the app
 
 | Tab | What it does |
