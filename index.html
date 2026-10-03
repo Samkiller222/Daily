@@ -73,6 +73,11 @@
       .ex-edit > :first-child, .ex-edit > :nth-child(5) { grid-column: 1 / -1; }
       .ex-edit.head { display: none; }
     }
+    .banner { max-width: 980px; margin: 0 auto 12px; padding: 10px 14px; border-radius: 10px; font-size: 14px;
+      display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; }
+    .banner.err { background: #fde8e8; color: #8a1c1c; border: 1px solid #f5b5b5; }
+    .banner.demo { background: #fff6db; color: #7a5a00; border: 1px solid #f0d78a; }
+    .banner button { border: 0; background: transparent; color: inherit; font-size: 16px; cursor: pointer; }
     .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text);
       color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
     .toast.show { opacity: 1; }
@@ -113,6 +118,7 @@
   </nav>
 
   <main>
+    <div id="banner" class="banner hidden"><div id="bannerText"></div><button id="bannerClose" title="Dismiss">✕</button></div>
     <p id="loading" class="muted">Loading…</p>
 
     <!-- TODAY -->
@@ -286,10 +292,11 @@
   // ---------- Server bridge ----------
   // In Apps Script, google.script.run calls functions in Code.gs.
   // Opening this file directly in a browser uses demo data instead.
+  var IN_APPS_SCRIPT = !!(window.google && google.script && google.script.run);
   function call(fn) {
     var args = Array.prototype.slice.call(arguments, 1);
     return new Promise(function (resolve, reject) {
-      if (window.google && google.script && google.script.run) {
+      if (IN_APPS_SCRIPT) {
         var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(function (e) { reject(e); });
         r[fn].apply(r, args);
       } else {
@@ -326,7 +333,20 @@
   function r0(n) { return Math.round(n); }
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show');
     clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2200); }
-  function fail(e) { toast('Error: ' + (e && e.message ? e.message : e)); console.error(e); }
+  // Errors stay on screen until dismissed, so they can't be missed.
+  function errorText(e) {
+    var msg = String(e && e.message ? e.message : e);
+    if (/authoriz|permission|access denied|not have access|required permissions|ScriptError/i.test(msg)) {
+      msg += ' — This usually means your browser is signed in to more than one Google account. ' +
+        'Open the app in a private/incognito tab signed in only as the sheet owner, or sign out of the other accounts.';
+    }
+    return msg;
+  }
+  function showBanner(html, kind) {
+    $('bannerText').innerHTML = html; $('banner').className = 'banner ' + kind;
+  }
+  $('bannerClose').onclick = function () { $('banner').classList.add('hidden'); };
+  function fail(e) { console.error(e); showBanner('<b>Not saved.</b> ' + esc(errorText(e)), 'err'); }
   function parseDate(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function fmtTime(iso) { var d = new Date(iso); return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
   function fmtHour(iso) { var d = new Date(iso); return d.toLocaleTimeString([], { hour: 'numeric' }); }
@@ -733,7 +753,8 @@
       }).join('');
       $('calendarId').value = state.data.settings.calendarId;
     }).catch(function () {});
-  }).catch(function (e) { $('loading').innerHTML = '<span class="error">Could not load: ' + esc(e.message || e) + '</span>'; });
+  }).catch(function (e) { $('loading').classList.add('hidden'); showBanner('<b>Could not load your data.</b> ' + esc(errorText(e)), 'err'); });
+  if (!IN_APPS_SCRIPT) showBanner('<b>Demo mode.</b> This is a preview with sample data. Nothing is saved to your Google Sheet. Open the web app link from Apps Script to use your real data.', 'demo');
 
   // ---------- Demo data (only used when opened outside Apps Script) ----------
   var DEMO = (function () {
