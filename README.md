@@ -65,8 +65,8 @@ Days with no rows count as rest days.
 
 **Log**: one row per day you mark done or add notes to (Date, Day, Completed, Notes, Logged At).
 
+**Food Log**: one row per food item (Date, Time, Meal, Food, Portion, Calories, Protein (g), Carbs (g), Fat (g), Source, ID). Source is `Gemini` or `Manual`. The ID column lets the app delete the right row, so don't edit it.
+
 ## Preview without Google
 
 Open `src/Index.html` directly in a browser to try the interface with demo data.
-
-**Food Log**: one row per food item (Date, Time, Meal, Food, Portion, Calories, Protein (g), Carbs (g), Fat (g), Source, ID). Source is `Gemini` or `Manual`. The ID column lets the app delete the right row, so don't edit it.
