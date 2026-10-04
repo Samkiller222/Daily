@@ -7,6 +7,7 @@
  *   week has its own regimen that repeats every week until you change it.
  * - A calorie and macro tracker. Snap a photo of a meal and Gemini estimates
  *   calories, protein, carbs and fat; you review it, then it's saved here.
+ * - A daily checklist of weekly repeating tasks and one-time tasks.
  *
  * The script must be bound to the spreadsheet (Extensions > Apps Script),
  * which is where all data lives.
@@ -19,7 +20,9 @@ var SHEETS = {
   settings: { name: 'Settings', headers: ['Key', 'Value'] },
   log: { name: 'Log', headers: ['Date', 'Day', 'Completed', 'Notes', 'Logged At'] },
   food: { name: 'Food Log', headers: ['Date', 'Time', 'Meal', 'Food', 'Portion', 'Calories',
-    'Protein (g)', 'Carbs (g)', 'Fat (g)', 'Source', 'ID'] }
+    'Protein (g)', 'Carbs (g)', 'Fat (g)', 'Source', 'ID'] },
+  tasks: { name: 'Tasks', headers: ['ID', 'Type', 'Title', 'Days', 'Date', 'Order', 'Created'] },
+  taskChecks: { name: 'Task Checks', headers: ['Date', 'Task ID', 'Checked At'] }
 };
 
 var DEFAULT_SETTINGS = {
@@ -71,6 +74,7 @@ function getDashboard() {
     calendarError: null,
     food: getFoodDay(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
     foodHistory: getFoodHistory(7),
+    checklist: getChecklist(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
     geminiConfigured: isGeminiConfigured()
   };
   if (settings.latitude !== '' && settings.longitude !== '') {
@@ -419,6 +423,176 @@ function saveLogEntry(dateStr, completed, notes) {
   sheet.appendRow(row);
   sheet.getRange(sheet.getLastRow(), 1).setNumberFormat('@').setValue(dateStr);
   return getLogEntry(dateStr);
+}
+
+// ---------------------------------------------------------------------------
+// Daily checklist
+// ---------------------------------------------------------------------------
+// Weekly tasks show up on the weekdays listed in their Days column, every week.
+// One-time tasks show up on their date and carry over each day until ticked.
+// A row in Task Checks marks a task done on a date. Order is shared by all
+// tasks, so a drag on one day keeps that order on later days.
+
+var TASK_COL = { id: 0, type: 1, title: 2, days: 3, date: 4, order: 5, created: 6 };
+
+function taskRows_() {
+  return sheet_(SHEETS.tasks).getDataRange().getValues().slice(1)
+    .map(function (r, i) {
+      return {
+        id: String(r[TASK_COL.id]),
+        type: String(r[TASK_COL.type]) === 'weekly' ? 'weekly' : 'once',
+        title: String(r[TASK_COL.title]),
+        days: String(r[TASK_COL.days]).split(',')
+          .map(function (d) { return d.trim(); })
+          .filter(function (d) { return DAYS.indexOf(d) !== -1; }),
+        date: normalizeDate_(r[TASK_COL.date]),
+        order: Number(r[TASK_COL.order]) || 0,
+        row: i
+      };
+    })
+    .filter(function (t) { return t.id !== '' && t.title !== ''; })
+    .sort(function (a, b) { return (a.order - b.order) || (a.row - b.row); });
+}
+
+/** { taskId: [yyyy-MM-dd, ...] } for every tick ever made. */
+function taskChecks_() {
+  var map = {};
+  sheet_(SHEETS.taskChecks).getDataRange().getValues().slice(1).forEach(function (r) {
+    var id = String(r[1]);
+    if (id) (map[id] = map[id] || []).push(normalizeDate_(r[0]));
+  });
+  return map;
+}
+
+/**
+ * The checklist for a date (yyyy-MM-dd):
+ * { date, items: [{id, type, title, done, date, overdue}], upcoming: [...], weekly: [{id, title, days}] }
+ */
+function getChecklist(dateStr) {
+  var day = dayName_(parseLocal_(dateStr, '12:00'));
+  var checks = taskChecks_();
+  var out = { date: dateStr, items: [], upcoming: [], weekly: [] };
+  taskRows_().forEach(function (t) {
+    var ticked = checks[t.id] || [];
+    if (t.type === 'weekly') {
+      out.weekly.push({ id: t.id, title: t.title, days: t.days });
+      if (t.days.indexOf(day) !== -1) {
+        out.items.push({ id: t.id, type: 'weekly', title: t.title, done: ticked.indexOf(dateStr) !== -1 });
+      }
+      return;
+    }
+    if (t.date > dateStr) {
+      out.upcoming.push({ id: t.id, type: 'once', title: t.title, date: t.date });
+      return;
+    }
+    var doneToday = ticked.indexOf(dateStr) !== -1;
+    if (ticked.length && !doneToday) return; // finished on another day
+    out.items.push({ id: t.id, type: 'once', title: t.title, done: doneToday, date: t.date, overdue: t.date < dateStr });
+  });
+  out.upcoming.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  return out;
+}
+
+/** Adds a one-time task for dateStr (defaults to dashboardDate). */
+function addOnceTask(title, dateStr, dashboardDate) {
+  title = String(title || '').trim();
+  if (!title) throw new Error('Give the task a name.');
+  withLock_(function () { appendTask_('once', title, '', dateStr || dashboardDate); });
+  return getChecklist(dashboardDate);
+}
+
+/** Creates a weekly task, or updates one when task.id is set. task: {id?, title, days: ['Monday', ...]} */
+function saveWeeklyTask(task, dashboardDate) {
+  var title = String(task && task.title || '').trim();
+  if (!title) throw new Error('Give the task a name.');
+  var days = DAYS.filter(function (d) { return (task.days || []).indexOf(d) !== -1; });
+  if (!days.length) throw new Error('Pick at least one day.');
+  withLock_(function () {
+    if (!task.id) { appendTask_('weekly', title, days.join(','), ''); return; }
+    var row = findRowById_(SHEETS.tasks, task.id);
+    if (row === -1) throw new Error('Task not found. Reload the page.');
+    sheet_(SHEETS.tasks).getRange(row, TASK_COL.title + 1, 1, 2).setNumberFormat('@').setValues([[title, days.join(',')]]);
+  });
+  return getChecklist(dashboardDate);
+}
+
+function deleteTask(id, dashboardDate) {
+  withLock_(function () {
+    var row = findRowById_(SHEETS.tasks, id);
+    if (row !== -1) sheet_(SHEETS.tasks).deleteRow(row);
+    var checks = sheet_(SHEETS.taskChecks);
+    var values = checks.getDataRange().getValues();
+    for (var i = values.length - 1; i >= 1; i--) {
+      if (String(values[i][1]) === String(id)) checks.deleteRow(i + 1);
+    }
+  });
+  return getChecklist(dashboardDate);
+}
+
+/** Ticks or unticks a task for dateStr. */
+function setTaskDone(id, dateStr, done) {
+  withLock_(function () {
+    var sheet = sheet_(SHEETS.taskChecks);
+    var values = sheet.getDataRange().getValues();
+    for (var i = values.length - 1; i >= 1; i--) {
+      if (String(values[i][1]) === String(id) && normalizeDate_(values[i][0]) === dateStr) sheet.deleteRow(i + 1);
+    }
+    if (done) {
+      var r = sheet.getLastRow() + 1;
+      sheet.getRange(r, 1, 1, 2).setNumberFormat('@');
+      sheet.getRange(r, 1, 1, 3).setValues([[dateStr, String(id), new Date()]]);
+    }
+  });
+  return getChecklist(dateStr);
+}
+
+/**
+ * Saves a new order for the tasks in ids (the list as it was dragged). Tasks
+ * not in ids keep their places; the listed ones swap into each other's slots.
+ */
+function saveTaskOrder(ids, dashboardDate) {
+  withLock_(function () {
+    var all = taskRows_();
+    var listed = {};
+    (ids || []).forEach(function (id) { listed[id] = true; });
+    var moved = (ids || []).filter(function (id) { return all.some(function (t) { return t.id === id; }); });
+    var k = 0;
+    var ordered = all.map(function (t) { return listed[t.id] ? moved[k++] : t.id; });
+    var sheet = sheet_(SHEETS.tasks);
+    var values = sheet.getDataRange().getValues();
+    var position = {};
+    ordered.forEach(function (id, i) { position[id] = i + 1; });
+    var column = values.slice(1).map(function (r) {
+      var id = String(r[TASK_COL.id]);
+      return [id in position ? position[id] : r[TASK_COL.order]];
+    });
+    if (column.length) sheet.getRange(2, TASK_COL.order + 1, column.length, 1).setValues(column);
+  });
+  return getChecklist(dashboardDate);
+}
+
+function appendTask_(type, title, days, date) {
+  var sheet = sheet_(SHEETS.tasks);
+  var last = taskRows_().reduce(function (m, t) { return Math.max(m, t.order); }, 0);
+  var r = sheet.getLastRow() + 1;
+  sheet.getRange(r, 1, 1, 5).setNumberFormat('@');
+  sheet.getRange(r, 1, 1, 7).setValues([[Utilities.getUuid(), type, title, days, date, last + 1, new Date()]]);
+}
+
+/** 1-based row of the record whose first column is id, or -1. */
+function findRowById_(def, id) {
+  var sheet = sheet_(def);
+  var ids = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 1), 1).getValues();
+  for (var i = 1; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(id)) return i + 1;
+  }
+  return -1;
+}
+
+function withLock_(fn) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try { return fn(); } finally { lock.releaseLock(); }
 }
 
 // ---------------------------------------------------------------------------

@@ -184,6 +184,28 @@
     .entry .icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; }
     .hist { display: grid; grid-template-columns: 44px 1fr 70px; gap: 8px; align-items: center; font-size: 13px; }
     .hist .bar { margin: 0; }
+    /* ----- Checklist ----- */
+    ul.tasks { list-style: none; margin: 0; padding: 0; }
+    .task { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--border); background: var(--card); }
+    .task:first-child { border-top: 0; }
+    .task .grip { cursor: grab; color: var(--muted); padding: 4px 6px; touch-action: none; user-select: none; letter-spacing: -2px; }
+    .task label { flex: 1 1 auto; display: flex; align-items: center; gap: 10px; margin: 0; color: var(--text); font-size: 15px; cursor: pointer; min-width: 0; }
+    .task input[type=checkbox] { width: 18px; height: 18px; flex: 0 0 18px; margin: 0; accent-color: var(--ok); }
+    .task.done label span { text-decoration: line-through; color: var(--muted); }
+    .task .tag { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .task .tag.late { color: var(--danger); }
+    .task .icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px; }
+    .task.dragging { opacity: .85; box-shadow: 0 4px 14px rgba(0,0,0,.18); border-radius: 8px; position: relative; z-index: 3; }
+    .task.dragging .grip { cursor: grabbing; }
+    .task-add { margin-top: 10px; }
+    .task-add input[type=date] { max-width: 150px; }
+    .daypick { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+    .daypick button { border: 1px solid var(--border); background: var(--card); color: var(--muted); border-radius: 999px;
+      padding: 3px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+    .daypick button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .wk-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--border); }
+    .wk-row input { flex: 1 1 180px; width: auto; }
+    .wk-row .icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
   </style>
 </head>
 <body>
@@ -193,6 +215,7 @@
   </header>
   <nav>
     <button data-tab="today" class="active">Today</button>
+    <button data-tab="tasks">Checklist</button>
     <button data-tab="food">Food</button>
     <button data-tab="calendar">Calendar</button>
     <button data-tab="week">Weekly regimen</button>
@@ -209,6 +232,17 @@
         <div class="card" id="weatherCard">
           <h2><span>Weather <span class="muted small" id="wxLocation"></span></span></h2>
           <div id="weatherBody"></div>
+        </div>
+
+        <div class="card">
+          <h2><span>Checklist <span class="muted small" data-task-count></span></span>
+            <button class="btn small" id="goTasksBtn">Open</button></h2>
+          <ul class="tasks" id="dashTasks"></ul>
+          <form class="row task-add">
+            <input name="task" placeholder="Add a one-time task" autocomplete="off">
+            <input name="date" type="date" title="Day it's for">
+            <button class="btn primary">Add</button>
+          </form>
         </div>
 
         <div class="card">
@@ -239,6 +273,42 @@
               <option value="90">90 min</option><option value="120">2 hours</option>
             </select>
             <button class="btn primary" id="addEventBtn">Add</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHECKLIST -->
+    <section id="tab-tasks" class="hidden">
+      <div id="tasksMain">
+        <div class="card">
+          <h2><span>Today's checklist <span class="muted small" data-task-count></span></span>
+            <button class="btn small" id="taskSettingsBtn">⚙ Settings</button></h2>
+          <div class="bar"><span id="tasksBar" style="width:0"></span></div>
+          <ul class="tasks" id="tasksList"></ul>
+          <form class="row task-add">
+            <input name="task" placeholder="Add a one-time task" autocomplete="off">
+            <input name="date" type="date" title="Day it's for">
+            <button class="btn primary">Add</button>
+          </form>
+          <p class="muted small">Drag ⋮⋮ to reorder. Unfinished one-time tasks carry over to the next day.</p>
+        </div>
+        <div class="card hidden" style="margin-top:16px" id="upcomingCard">
+          <h2><span>Coming up</span></h2>
+          <ul class="tasks" id="upcomingList"></ul>
+        </div>
+      </div>
+
+      <div id="tasksSettings" class="hidden">
+        <div class="card">
+          <h2><span>Checklist settings</span><button class="btn small" id="taskSettingsBack">← Back</button></h2>
+          <p class="muted small" style="margin-top:-6px">Weekly tasks appear on your checklist on the days you pick, every week. Changes save straight away.</p>
+          <div id="weeklyList"></div>
+          <label for="wkNewTitle">New weekly task</label>
+          <div class="wk-row" style="border-top:0;padding-top:0">
+            <input id="wkNewTitle" placeholder="e.g. Water the plants" autocomplete="off">
+            <span class="daypick" id="wkNewDays"></span>
+            <button class="btn primary" id="wkAddBtn">Add</button>
           </div>
         </div>
       </div>
@@ -467,7 +537,8 @@
   function showTab(name) {
     document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
     if (name === 'calendar') calRender();
-    ['today', 'food', 'calendar', 'week', 'settings'].forEach(function (t) { $('tab-' + t).classList.toggle('hidden', t !== name); });
+    if (name === 'tasks') showTaskSettings(false);
+    ['today', 'tasks', 'food', 'calendar', 'week', 'settings'].forEach(function (t) { $('tab-' + t).classList.toggle('hidden', t !== name); });
     if (name === 'week' && !state.editDay) selectDay(state.data.dayName);
   }
   document.querySelectorAll('nav button').forEach(function (b) {
@@ -705,6 +776,168 @@
       state.data.events = events; state.data.calendarError = null; renderEvents(); toast('Calendar updated');
     }).catch(fail);
   };
+
+  // ---------- Checklist ----------
+  // The same list is drawn on the dashboard and on the Checklist tab.
+  function applyChecklist(c) { state.data.checklist = c; renderTasks(); }
+  function shortDate(s) { return parseDate(s).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }); }
+
+  function taskHtml(t, upcoming) {
+    var tag = upcoming ? '<span class="tag">' + esc(shortDate(t.date)) + '</span>'
+      : t.overdue && !t.done ? '<span class="tag late">since ' + esc(shortDate(t.date)) + '</span>' : '';
+    return '<li class="task' + (t.done ? ' done' : '') + '" data-id="' + esc(t.id) + '">' +
+      (upcoming ? '' : '<span class="grip" title="Drag to reorder">⋮⋮</span>') +
+      '<label>' + (upcoming ? '' : '<input type="checkbox"' + (t.done ? ' checked' : '') + '>') + '<span>' + esc(t.title) + '</span></label>' +
+      tag + (t.type === 'once' ? '<button class="icon" data-del title="Delete">✕</button>' : '') + '</li>';
+  }
+
+  function renderTasks() {
+    var c = state.data.checklist, items = c.items;
+    var done = items.filter(function (t) { return t.done; }).length;
+    [$('dashTasks'), $('tasksList')].forEach(function (ul) {
+      ul.innerHTML = items.length ? items.map(function (t) { return taskHtml(t); }).join('')
+        : '<li class="muted" style="padding:6px 0">Nothing on the list today.</li>';
+      wireTasks(ul);
+    });
+    document.querySelectorAll('[data-task-count]').forEach(function (el) { el.textContent = items.length ? done + '/' + items.length : ''; });
+    $('tasksBar').style.width = (items.length ? done / items.length * 100 : 0) + '%';
+    $('upcomingCard').classList.toggle('hidden', !c.upcoming.length);
+    $('upcomingList').innerHTML = c.upcoming.map(function (t) { return taskHtml(t, true); }).join('');
+    wireTasks($('upcomingList'));
+    renderWeekly();
+  }
+
+  function wireTasks(ul) {
+    ul.querySelectorAll('.task').forEach(function (li) {
+      var id = li.dataset.id, box = li.querySelector('input[type=checkbox]'), del = li.querySelector('[data-del]');
+      if (box) box.onchange = function () {
+        var t = state.data.checklist.items.filter(function (x) { return x.id === id; })[0], done = box.checked;
+        t.done = done; renderTasks();
+        call('setTaskDone', id, state.data.today, done).then(applyChecklist)
+          .catch(function (e) { t.done = !done; renderTasks(); fail(e); });
+      };
+      if (del) del.onclick = function () {
+        if (!confirm('Delete this task?')) return;
+        call('deleteTask', id, state.data.today).then(function (c) { applyChecklist(c); toast('Task deleted'); }).catch(fail);
+      };
+    });
+    makeSortable(ul, function (ids) {
+      var c = state.data.checklist, byId = {};
+      c.items.forEach(function (t) { byId[t.id] = t; });
+      c.items = ids.map(function (id) { return byId[id]; });
+      renderTasks();
+      call('saveTaskOrder', ids, state.data.today).then(applyChecklist).catch(fail);
+    });
+  }
+
+  // Drag by the ⋮⋮ handle. Pointer events work for mouse and touch alike.
+  function makeSortable(ul, onReorder) {
+    function ids() { return [].map.call(ul.querySelectorAll('.task'), function (li) { return li.dataset.id; }); }
+    ul.querySelectorAll('.grip').forEach(function (grip) {
+      grip.onpointerdown = function (e) {
+        e.preventDefault();
+        var li = grip.closest('.task'), before = ids().join();
+        li.classList.add('dragging');
+        // Listen on the document: moving the row in the DOM drops pointer capture.
+        function move(ev) {
+          var others = [].filter.call(ul.querySelectorAll('.task'), function (x) { return x !== li; });
+          var next = others.filter(function (x) { var r = x.getBoundingClientRect(); return ev.clientY < r.top + r.height / 2; })[0];
+          if (next) { if (li.nextElementSibling !== next) ul.insertBefore(li, next); }
+          else if (ul.lastElementChild !== li) ul.appendChild(li);
+        }
+        function end() {
+          document.removeEventListener('pointermove', move);
+          document.removeEventListener('pointerup', end);
+          document.removeEventListener('pointercancel', end);
+          li.classList.remove('dragging');
+          var after = ids();
+          if (after.join() !== before) onReorder(after);
+        }
+        document.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', end);
+        document.addEventListener('pointercancel', end);
+      };
+    });
+  }
+
+  document.querySelectorAll('form.task-add').forEach(function (form) {
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var title = form.elements.task.value.trim(), date = form.elements.date.value || state.data.today, btn = form.querySelector('button');
+      if (!title) { form.elements.task.focus(); return; }
+      btn.disabled = true;
+      call('addOnceTask', title, date, state.data.today).then(function (c) {
+        applyChecklist(c); form.elements.task.value = ''; form.elements.date.value = state.data.today;
+        toast(date === state.data.today ? 'Task added' : 'Added for ' + shortDate(date));
+      }).catch(fail).then(function () { btn.disabled = false; });
+    };
+  });
+
+  // ----- Checklist settings (only reachable from the Checklist tab) -----
+  function showTaskSettings(on) {
+    $('tasksMain').classList.toggle('hidden', on);
+    $('tasksSettings').classList.toggle('hidden', !on);
+  }
+  $('taskSettingsBtn').onclick = function () { showTaskSettings(true); };
+  $('taskSettingsBack').onclick = function () { showTaskSettings(false); };
+  $('goTasksBtn').onclick = function () { showTab('tasks'); };
+
+  function dayPick(selected) {
+    return DAYS.map(function (d) {
+      return '<button type="button" data-d="' + d + '" class="' + (selected.indexOf(d) !== -1 ? 'on' : '') + '">' + d.slice(0, 3) + '</button>';
+    }).join('');
+  }
+  function wireDayPick(el, selected, onChange) {
+    el.querySelectorAll('button').forEach(function (b) {
+      b.onclick = function () {
+        var i = selected.indexOf(b.dataset.d);
+        if (i === -1) selected.push(b.dataset.d); else selected.splice(i, 1);
+        b.classList.toggle('on', i === -1);
+        onChange();
+      };
+    });
+  }
+
+  function renderWeekly() {
+    var list = state.data.checklist.weekly;
+    $('weeklyList').innerHTML = list.length ? list.map(function (t) {
+      return '<div class="wk-row" data-id="' + esc(t.id) + '"><input value="' + esc(t.title) + '">' +
+        '<span class="daypick">' + dayPick(t.days) + '</span><button class="icon" title="Delete">✕</button></div>';
+    }).join('') : '<p class="muted">No weekly tasks yet. Add one below.</p>';
+    $('weeklyList').querySelectorAll('.wk-row').forEach(function (row) {
+      var t = list.filter(function (x) { return x.id === row.dataset.id; })[0], days = t.days.slice();
+      function save() {
+        if (!days.length) return toast('Pick at least one day');
+        call('saveWeeklyTask', { id: t.id, title: row.querySelector('input').value, days: days }, state.data.today)
+          .then(function (c) { applyChecklist(c); toast('Saved'); }).catch(fail);
+      }
+      row.querySelector('input').onchange = save;
+      wireDayPick(row.querySelector('.daypick'), days, save);
+      row.querySelector('.icon').onclick = function () {
+        if (!confirm('Delete "' + t.title + '" from every week?')) return;
+        call('deleteTask', t.id, state.data.today).then(function (c) { applyChecklist(c); toast('Task deleted'); }).catch(fail);
+      };
+    });
+  }
+
+  var newDays = [];
+  function resetNewWeekly() {
+    newDays = [];
+    $('wkNewTitle').value = '';
+    $('wkNewDays').innerHTML = dayPick(newDays);
+    wireDayPick($('wkNewDays'), newDays, function () {});
+  }
+  $('wkAddBtn').onclick = function () {
+    var btn = this, title = $('wkNewTitle').value.trim();
+    if (!title) { $('wkNewTitle').focus(); return toast('Name the task first'); }
+    if (!newDays.length) return toast('Pick at least one day');
+    btn.disabled = true;
+    call('saveWeeklyTask', { title: title, days: newDays }, state.data.today).then(function (c) {
+      applyChecklist(c); resetNewWeekly(); toast('Weekly task added');
+    }).catch(fail).then(function () { btn.disabled = false; });
+  };
+  $('wkNewTitle').onkeydown = function (e) { if (e.key === 'Enter') $('wkAddBtn').click(); };
+  resetNewWeekly();
 
   // ---------- Food ----------
   var review = [];
@@ -1181,7 +1414,8 @@
   call('getDashboard').then(function (data) {
     state.data = data;
     $('headerDate').textContent = parseDate(data.today).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-    renderWeather(); renderToday(); renderEvents(); renderSettings(); renderFood();
+    renderWeather(); renderToday(); renderEvents(); renderSettings(); renderFood(); renderTasks();
+    document.querySelectorAll('form.task-add input[type=date]').forEach(function (i) { i.value = data.today; });
     $('loading').classList.add('hidden');
     showTab('today');
     call('listCalendars').then(function (cals) {
@@ -1242,6 +1476,29 @@
       allDay(-3, 1, 'Public holiday', 'hol', '#0b8043');
       return list;
     })();
+    var tasks = [
+      { id: 't1', type: 'weekly', title: 'Make the bed', days: DAYS.slice(), order: 1 },
+      { id: 't2', type: 'weekly', title: 'Take vitamins', days: DAYS.slice(), order: 2 },
+      { id: 't3', type: 'once', title: 'Call the bank', date: iso(new Date(today.getTime() - 864e5)), order: 3 },
+      { id: 't4', type: 'weekly', title: 'Take out the bins', days: [dayName], order: 4 },
+      { id: 't5', type: 'weekly', title: 'Water the plants', days: ['Monday', 'Thursday'], order: 5 },
+      { id: 't6', type: 'once', title: 'Book a haircut', date: iso(new Date(today.getTime() + 2 * 864e5)), order: 6 }
+    ], checks = {}, nextId = 7;
+    function checklist(d) {
+      var day = DAYS[(parseDate(d).getDay() + 6) % 7], out = { date: d, items: [], upcoming: [], weekly: [] };
+      tasks.slice().sort(function (a, b) { return a.order - b.order; }).forEach(function (t) {
+        var ticked = checks[t.id] || [];
+        if (t.type === 'weekly') {
+          out.weekly.push({ id: t.id, title: t.title, days: t.days.slice() });
+          if (t.days.indexOf(day) !== -1) out.items.push({ id: t.id, type: 'weekly', title: t.title, done: ticked.indexOf(d) !== -1 });
+        } else if (t.date > d) out.upcoming.push({ id: t.id, type: 'once', title: t.title, date: t.date });
+        else if (!ticked.length || ticked.indexOf(d) !== -1) {
+          out.items.push({ id: t.id, type: 'once', title: t.title, done: ticked.indexOf(d) !== -1, date: t.date, overdue: t.date < d });
+        }
+      });
+      return out;
+    }
+    function addTask(t) { t.id = 't' + nextId++; t.order = tasks.length + 1; tasks.push(t); }
     var log = null, now = new Date(); now.setMinutes(0, 0, 0);
     var weather = { location: settings.locationName, units: { temp: '°F', wind: 'mph', precip: 'in' },
       current: { temp: 72, feelsLike: 74, humidity: 55, precipitation: 0, wind: 8, code: 2, isDay: true },
@@ -1254,7 +1511,19 @@
       { title: 'Dentist', date: iso(new Date(today.getTime() + 864e5)), start: iso(new Date(today.getTime() + 864e5)) + 'T14:00', allDay: false }];
     return {
       getDashboard: function () { return { today: iso(today), dayName: dayName, settings: settings, regimen: regimen, log: log, weather: weather, events: events,
-        food: food, foodHistory: hist(), geminiConfigured: keySet }; },
+        food: food, foodHistory: hist(), checklist: checklist(iso(today)), geminiConfigured: keySet }; },
+      setTaskDone: function (id, d, done) { var l = (checks[id] || []).filter(function (x) { return x !== d; });
+        if (done) l.push(d); checks[id] = l; return checklist(d); },
+      addOnceTask: function (title, d, td) { addTask({ type: 'once', title: title, date: d || td }); return checklist(td); },
+      saveWeeklyTask: function (t, td) { if (!t.days.length) throw new Error('Pick at least one day.');
+        var old = tasks.filter(function (x) { return x.id === t.id; })[0];
+        if (old) { old.title = t.title; old.days = t.days.slice(); } else addTask({ type: 'weekly', title: t.title, days: t.days.slice() });
+        return checklist(td); },
+      deleteTask: function (id, td) { tasks = tasks.filter(function (x) { return x.id !== id; }); return checklist(td); },
+      saveTaskOrder: function (ids, td) { var all = tasks.slice().sort(function (a, b) { return a.order - b.order; }), k = 0;
+        var byId = {}; tasks.forEach(function (t) { byId[t.id] = t; });
+        all.map(function (t) { return ids.indexOf(t.id) !== -1 ? ids[k++] : t.id; }).forEach(function (id, i) { byId[id].order = i + 1; });
+        return checklist(td); },
       saveGeminiKey: function (k) { keySet = !!k; return keySet; },
       analyzeFoodImage: function () { return { items: [{ food: 'Grilled chicken breast', portion: '150 g', calories: 248, protein: 46, carbs: 0, fat: 5.4 },
         { food: 'White rice', portion: '1 cup', calories: 205, protein: 4.3, carbs: 45, fat: 0.4 }], notes: 'Portions estimated from plate size.' }; },

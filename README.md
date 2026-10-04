@@ -6,6 +6,7 @@ A personal daily dashboard web app that runs on Google Apps Script:
 - **Google Calendar**: a full calendar view (month, week and agenda) of all your calendars, where you can add and delete events, plus a one-tap button that adds today's workout to your calendar with the exercises in the event description.
 - **Weekly training regimen** stored in a **Google Sheet**. Each day of the week (Monday–Sunday) has its own regimen. It repeats every week until you change it.
 - **Daily log**: mark today's training as done and add notes. These are saved to the sheet too.
+- **Daily checklist**: weekly tasks that come back on the days you pick, plus one-time tasks you can add from the dashboard. Tick them off and drag them into any order.
 - **Calorie and macro tracker**: take or choose a photo of a meal and Gemini estimates each item's calories, protein, carbs and fat. You check and edit the numbers before they're saved to the sheet. You can also add food by hand. It shows your progress against daily goals and the last 7 days.
 
 Because the app runs inside Google Apps Script, it already has access to your Sheet and Calendar. You don't need a Google Cloud project or OAuth client. The only key is an optional Gemini API key for food photos.
@@ -27,7 +28,7 @@ Because the app runs inside Google Apps Script, it already has access to your Sh
    - Click **Deploy**, then approve the permissions (Sheets, Calendar, and external requests for the weather).
 5. **Open the web app URL** it gives you. Bookmark it, or add it to your phone's home screen.
 
-On first load, the app creates any missing tabs in your sheet: **Regimen**, **Settings**, **Log**, and **Food Log**.
+On first load, the app creates any missing tabs in your sheet: **Regimen**, **Settings**, **Log**, **Food Log**, **Tasks** and **Task Checks**.
 
 ### Gemini API key (for food photos)
 1. Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
@@ -72,6 +73,7 @@ The secret gives access to your Apps Script projects, so keep the repo private o
 | Tab | What it does |
 |---|---|
 | **Today** | Weather, today's regimen (based on the weekday), a "Mark as done" button with notes, your upcoming calendar events, and "Add today's workout" to your calendar. |
+| **Checklist** | Today's tasks with a progress bar. Tick tasks off, drag the ⋮⋮ handle to reorder (the order is kept on later days too), and add one-time tasks for today or a later date. One-time tasks you don't finish carry over to the next day, and future ones are listed under **Coming up**. **⚙ Settings** (only on this tab) is where you add, rename, delete and choose the days for weekly tasks. The **Today** tab shows the same list, where you can also tick, reorder and add one-time tasks. |
 | **Food** | Today's calories and macros against your goals, a 7-day history, **📷 Photo** to analyze a meal with Gemini, **+ Add manually**, and today's log, where you can delete entries. |
 | **Calendar** | Your Google Calendar in **Month**, **Week** or **Agenda** view. Move between weeks or months with ‹ ›, or jump back with **Today**. Every calendar you can see appears in its own colour, and you can tap a calendar's name to hide or show it. Tap a day to see its events and that day's training, or tap an event for details. **+ Event** adds an event. One-off events can be deleted here; repeating events are edited in Google Calendar. |
 | **Weekly regimen** | Choose a day (Mon–Sun) to add, edit, reorder, or remove exercises (Exercise / Sets / Reps / Weight / Notes). You can also copy another day's regimen. Click **Save**. |
@@ -95,6 +97,10 @@ Days with no rows count as rest days.
 **Log**: one row per day you mark done or add notes to (Date, Day, Completed, Notes, Logged At).
 
 **Food Log**: one row per food item (Date, Time, Meal, Food, Portion, Calories, Protein (g), Carbs (g), Fat (g), Source, ID). Source is `Gemini` or `Manual`. The ID column lets the app delete the right row, so don't edit it.
+
+**Tasks**: one row per checklist task (ID, Type, Title, Days, Date, Order, Created). Type is `weekly` (shown on the comma-separated Days, e.g. `Monday,Thursday`) or `once` (shown from Date until ticked). Order is the list position. Don't edit the ID column.
+
+**Task Checks**: one row each time a task is ticked (Date, Task ID, Checked At). Unticking removes the row.
 
 ## Preview without Google
 
