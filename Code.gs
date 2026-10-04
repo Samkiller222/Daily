@@ -8,6 +8,9 @@
  * - A calorie and macro tracker. Snap a photo of a meal and Gemini estimates
  *   calories, protein, carbs and fat; you review it, then it's saved here.
  * - A daily checklist of weekly repeating tasks and one-time tasks.
+ * - Workout check-off: tick off each exercise, with a training streak.
+ * - Habit counters (water, sleep, ...) you tap up and down through the day.
+ * - A weekly summary and a morning brief, in the app or as a daily email.
  *
  * The script must be bound to the spreadsheet (Extensions > Apps Script),
  * which is where all data lives.
@@ -22,8 +25,19 @@ var SHEETS = {
   food: { name: 'Food Log', headers: ['Date', 'Time', 'Meal', 'Food', 'Portion', 'Calories',
     'Protein (g)', 'Carbs (g)', 'Fat (g)', 'Source', 'ID'] },
   tasks: { name: 'Tasks', headers: ['ID', 'Type', 'Title', 'Days', 'Date', 'Order', 'Created'] },
-  taskChecks: { name: 'Task Checks', headers: ['Date', 'Task ID', 'Checked At'] }
+  taskChecks: { name: 'Task Checks', headers: ['Date', 'Task ID', 'Checked At'] },
+  workoutChecks: { name: 'Workout Checks', headers: ['Date', 'Exercise', 'Checked At'] },
+  habits: { name: 'Habits', headers: ['ID', 'Name', 'Icon', 'Target', 'Unit', 'Order', 'Created'],
+    seed: function () {
+      return [[Utilities.getUuid(), 'Water', '💧', 8, 'glasses', 1, new Date()],
+        [Utilities.getUuid(), 'Sleep', '😴', 8, 'hours', 2, new Date()]];
+    } },
+  habitLog: { name: 'Habit Log', headers: ['Date', 'Habit ID', 'Count', 'Updated'] }
 };
+
+// How many days of food totals the app loads (the Food tab shows the last 7,
+// the rest is for the on-target streak).
+var FOOD_HISTORY_DAYS = 30;
 
 var DEFAULT_SETTINGS = {
   locationName: '',
@@ -37,7 +51,9 @@ var DEFAULT_SETTINGS = {
   proteinGoal: '150',
   carbsGoal: '200',
   fatGoal: '65',
-  geminiModel: 'gemini-3.8-flash'
+  geminiModel: 'gemini-3.8-flash',
+  morningEmail: 'off',       // 'on' sends the morning brief by email every day
+  morningEmailHour: '7'      // hour of the day (0-23) in the script's time zone
 };
 
 // The Gemini API key is kept in Script Properties (never in the sheet).
@@ -73,8 +89,10 @@ function getDashboard() {
     events: [],
     calendarError: null,
     food: getFoodDay(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
-    foodHistory: getFoodHistory(7),
+    foodHistory: getFoodHistory(FOOD_HISTORY_DAYS),
     checklist: getChecklist(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
+    workout: getWorkoutDay(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
+    habits: getHabits(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
     geminiConfigured: isGeminiConfigured()
   };
   if (settings.latitude !== '' && settings.longitude !== '') {
@@ -469,10 +487,14 @@ function taskChecks_() {
  * { date, items: [{id, type, title, done, date, overdue}], upcoming: [...], weekly: [{id, title, days}] }
  */
 function getChecklist(dateStr) {
+  return checklistFor_(dateStr, taskRows_(), taskChecks_());
+}
+
+/** getChecklist() with the sheet rows already read, so a week can share one read. */
+function checklistFor_(dateStr, rows, checks) {
   var day = dayName_(parseLocal_(dateStr, '12:00'));
-  var checks = taskChecks_();
   var out = { date: dateStr, items: [], upcoming: [], weekly: [] };
-  taskRows_().forEach(function (t) {
+  rows.forEach(function (t) {
     var ticked = checks[t.id] || [];
     if (t.type === 'weekly') {
       out.weekly.push({ id: t.id, title: t.title, days: t.days });
@@ -664,7 +686,7 @@ function addFoodEntries(dateStr, meal, items, source) {
     sheet.getRange(start, 1, rows.length, 2).setNumberFormat('@');
     sheet.getRange(start, 1, rows.length, rows[0].length).setValues(rows);
   }
-  return { food: getFoodDay(dateStr), foodHistory: getFoodHistory(7) };
+  return { food: getFoodDay(dateStr), foodHistory: getFoodHistory(FOOD_HISTORY_DAYS) };
 }
 
 function deleteFoodEntry(id, dateStr) {
@@ -673,7 +695,7 @@ function deleteFoodEntry(id, dateStr) {
   for (var i = ids.length - 1; i >= 1; i--) {
     if (String(ids[i][0]) === String(id)) { sheet.deleteRow(i + 1); break; }
   }
-  return { food: getFoodDay(dateStr), foodHistory: getFoodHistory(7) };
+  return { food: getFoodDay(dateStr), foodHistory: getFoodHistory(FOOD_HISTORY_DAYS) };
 }
 
 function num_(v) {
@@ -769,6 +791,327 @@ function analyzeFoodImage(base64, mimeType, description) {
 }
 
 // ---------------------------------------------------------------------------
+// Workout check-off and streak
+// ---------------------------------------------------------------------------
+// Each ticked exercise is a row in Workout Checks (Date, Exercise). Ticking the
+// last one marks the day done in the Log tab. The streak counts days marked
+// done in a row; rest days (no exercises in the regimen) don't break it, and
+// today only counts once it's done.
+
+/** { date: {completed, notes} } for every row in the Log tab. */
+function logMap_() {
+  var map = {};
+  sheet_(SHEETS.log).getDataRange().getValues().slice(1).forEach(function (r) {
+    var d = normalizeDate_(r[0]);
+    if (d) map[d] = { completed: r[2] === true || r[2] === 'TRUE', notes: String(r[3]) };
+  });
+  return map;
+}
+
+/** Exercise names ticked on dateStr. */
+function workoutChecks_(dateStr) {
+  return sheet_(SHEETS.workoutChecks).getDataRange().getValues().slice(1)
+    .filter(function (r) { return normalizeDate_(r[0]) === dateStr; })
+    .map(function (r) { return String(r[1]); });
+}
+
+/**
+ * Today's workout: { date, day, checked: [exercise names], completed, streak,
+ * weekDone, weekPlanned }. The exercises themselves come from the regimen.
+ */
+function getWorkoutDay(dateStr) {
+  var regimen = getWeekRegimen();
+  var logs = logMap_();
+  var today = parseLocal_(dateStr, '12:00');
+
+  var streak = 0;
+  for (var i = 0; i < 400; i++) {
+    var d = new Date(today.getTime() - i * 864e5);
+    var key = Utilities.formatDate(d, timeZone_(), 'yyyy-MM-dd');
+    var done = logs[key] && logs[key].completed;
+    if (done) { streak++; continue; }
+    if (i === 0) continue;                                  // today isn't over yet
+    if (!(regimen[dayName_(d)] || []).length) continue;    // rest day
+    break;
+  }
+
+  // This week, Monday to Sunday.
+  var weekDone = 0, weekPlanned = 0;
+  var monday = new Date(today.getTime() - DAYS.indexOf(dayName_(today)) * 864e5);
+  for (var k = 0; k < 7; k++) {
+    var wd = new Date(monday.getTime() + k * 864e5);
+    var wkey = Utilities.formatDate(wd, timeZone_(), 'yyyy-MM-dd');
+    if ((regimen[DAYS[k]] || []).length) weekPlanned++;
+    if (logs[wkey] && logs[wkey].completed) weekDone++;
+  }
+
+  return {
+    date: dateStr,
+    day: dayName_(today),
+    checked: workoutChecks_(dateStr),
+    completed: !!(logs[dateStr] && logs[dateStr].completed),
+    notes: logs[dateStr] ? logs[dateStr].notes : '',
+    streak: streak,
+    weekDone: weekDone,
+    weekPlanned: Math.max(weekPlanned, weekDone)
+  };
+}
+
+/**
+ * Ticks or unticks one exercise. Ticking the last one marks the day done;
+ * unticking one after that marks it not done again.
+ */
+function setExerciseDone(dateStr, exercise, done) {
+  var names = (getWeekRegimen()[dayName_(parseLocal_(dateStr, '12:00'))] || [])
+    .map(function (x) { return x.exercise; });
+  withLock_(function () {
+    var sheet = sheet_(SHEETS.workoutChecks);
+    var values = sheet.getDataRange().getValues();
+    var before = values.slice(1).filter(function (r) { return normalizeDate_(r[0]) === dateStr; })
+      .map(function (r) { return String(r[1]); });
+    for (var i = values.length - 1; i >= 1; i--) {
+      if (normalizeDate_(values[i][0]) === dateStr && String(values[i][1]) === String(exercise)) sheet.deleteRow(i + 1);
+    }
+    if (done) {
+      var r = sheet.getLastRow() + 1;
+      sheet.getRange(r, 1, 1, 2).setNumberFormat('@');
+      sheet.getRange(r, 1, 1, 3).setValues([[dateStr, String(exercise), new Date()]]);
+    }
+    var after = before.filter(function (n) { return n !== String(exercise); });
+    if (done) after.push(String(exercise));
+    var allBefore = names.length && names.every(function (n) { return before.indexOf(n) !== -1; });
+    var allAfter = names.length && names.every(function (n) { return after.indexOf(n) !== -1; });
+    if (allAfter !== allBefore) {
+      var log = getLogEntry(dateStr);
+      saveLogEntry(dateStr, allAfter, log ? log.notes : '');
+    }
+  });
+  return getWorkoutDay(dateStr);
+}
+
+// ---------------------------------------------------------------------------
+// Habit counters (water, sleep, anything you count)
+// ---------------------------------------------------------------------------
+// Habits holds what you track; Habit Log holds one row per habit per day with
+// that day's count.
+
+var HABIT_COL = { id: 0, name: 1, icon: 2, target: 3, unit: 4, order: 5, created: 6 };
+
+function habitRows_() {
+  return sheet_(SHEETS.habits).getDataRange().getValues().slice(1)
+    .map(function (r, i) {
+      return {
+        id: String(r[HABIT_COL.id]),
+        name: String(r[HABIT_COL.name]),
+        icon: String(r[HABIT_COL.icon]),
+        target: Number(r[HABIT_COL.target]) || 0,
+        unit: String(r[HABIT_COL.unit]),
+        order: Number(r[HABIT_COL.order]) || 0,
+        row: i
+      };
+    })
+    .filter(function (h) { return h.id !== '' && h.name !== ''; })
+    .sort(function (a, b) { return (a.order - b.order) || (a.row - b.row); });
+}
+
+/** { 'yyyy-MM-dd|habitId': count } */
+function habitCounts_() {
+  var map = {};
+  sheet_(SHEETS.habitLog).getDataRange().getValues().slice(1).forEach(function (r) {
+    map[normalizeDate_(r[0]) + '|' + String(r[1])] = Number(r[2]) || 0;
+  });
+  return map;
+}
+
+/** Habits with their count for dateStr: [{id, name, icon, target, unit, count}]. */
+function getHabits(dateStr) {
+  var counts = habitCounts_();
+  return habitRows_().map(function (h) {
+    return { id: h.id, name: h.name, icon: h.icon, target: h.target, unit: h.unit,
+      count: counts[dateStr + '|' + h.id] || 0 };
+  });
+}
+
+/** Adds delta (e.g. 1 or -1) to a habit's count for dateStr. Never goes below 0. */
+function bumpHabit(id, dateStr, delta) {
+  withLock_(function () {
+    var sheet = sheet_(SHEETS.habitLog);
+    var values = sheet.getDataRange().getValues();
+    for (var i = values.length - 1; i >= 1; i--) {
+      if (normalizeDate_(values[i][0]) === dateStr && String(values[i][1]) === String(id)) {
+        var next = Math.max(0, num_((Number(values[i][2]) || 0) + Number(delta)));
+        sheet.getRange(i + 1, 3, 1, 2).setValues([[next, new Date()]]);
+        return;
+      }
+    }
+    var r = sheet.getLastRow() + 1;
+    sheet.getRange(r, 1, 1, 2).setNumberFormat('@');
+    sheet.getRange(r, 1, 1, 4).setValues([[dateStr, String(id), Math.max(0, num_(delta)), new Date()]]);
+  });
+  return getHabits(dateStr);
+}
+
+/** Creates a habit, or updates one when habit.id is set. habit: {id?, name, icon, target, unit} */
+function saveHabit(habit, dateStr) {
+  var name = String(habit && habit.name || '').trim();
+  if (!name) throw new Error('Give the habit a name.');
+  var values = [name, String(habit.icon || '').trim(), num_(habit.target), String(habit.unit || '').trim()];
+  withLock_(function () {
+    var sheet = sheet_(SHEETS.habits);
+    if (!habit.id) {
+      var last = habitRows_().reduce(function (m, h) { return Math.max(m, h.order); }, 0);
+      sheet.appendRow([Utilities.getUuid()].concat(values, [last + 1, new Date()]));
+      return;
+    }
+    var row = findRowById_(SHEETS.habits, habit.id);
+    if (row === -1) throw new Error('Habit not found. Reload the page.');
+    sheet.getRange(row, HABIT_COL.name + 1, 1, 4).setValues([values]);
+  });
+  return getHabits(dateStr);
+}
+
+/** Deletes a habit and its history. */
+function deleteHabit(id, dateStr) {
+  withLock_(function () {
+    var row = findRowById_(SHEETS.habits, id);
+    if (row !== -1) sheet_(SHEETS.habits).deleteRow(row);
+    var log = sheet_(SHEETS.habitLog);
+    var values = log.getDataRange().getValues();
+    for (var i = values.length - 1; i >= 1; i--) {
+      if (String(values[i][1]) === String(id)) log.deleteRow(i + 1);
+    }
+  });
+  return getHabits(dateStr);
+}
+
+// ---------------------------------------------------------------------------
+// Weekly summary
+// ---------------------------------------------------------------------------
+
+/**
+ * Seven days from mondayStr (yyyy-MM-dd): food totals, training, checklist and
+ * habit counts per day. { start, days: [...], habits: [{id, name, icon, target, unit, counts}] }
+ */
+function getWeekSummary(mondayStr) {
+  var tz = timeZone_();
+  var monday = parseLocal_(mondayStr, '12:00');
+  var dates = [];
+  for (var i = 0; i < 7; i++) dates.push(Utilities.formatDate(new Date(monday.getTime() + i * 864e5), tz, 'yyyy-MM-dd'));
+
+  var food = {};
+  dates.forEach(function (d) { food[d] = { calories: 0, protein: 0, carbs: 0, fat: 0, items: 0 }; });
+  foodRows_().forEach(function (f) {
+    var t = food[f.date];
+    if (!t) return;
+    t.calories += f.calories; t.protein += f.protein; t.carbs += f.carbs; t.fat += f.fat; t.items++;
+  });
+
+  var regimen = getWeekRegimen();
+  var logs = logMap_();
+  var tasks = taskRows_();
+  var checks = taskChecks_();
+  var counts = habitCounts_();
+  var habits = habitRows_();
+
+  return {
+    start: mondayStr,
+    days: dates.map(function (d, i) {
+      var list = checklistFor_(d, tasks, checks).items;
+      var f = food[d];
+      return {
+        date: d,
+        day: DAYS[i],
+        calories: num_(f.calories), protein: num_(f.protein), carbs: num_(f.carbs), fat: num_(f.fat),
+        foodItems: f.items,
+        planned: (regimen[DAYS[i]] || []).length > 0,
+        trained: !!(logs[d] && logs[d].completed),
+        notes: logs[d] ? logs[d].notes : '',
+        tasksDone: list.filter(function (t) { return t.done; }).length,
+        tasksTotal: list.length
+      };
+    }),
+    habits: habits.map(function (h) {
+      return { id: h.id, name: h.name, icon: h.icon, target: h.target, unit: h.unit,
+        counts: dates.map(function (d) { return counts[d + '|' + h.id] || 0; }) };
+    })
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Morning brief by email (optional)
+// ---------------------------------------------------------------------------
+// The app shows the brief at the top of the Today tab. Turning on the email in
+// Settings adds a daily trigger that runs sendMorningBrief().
+
+var BRIEF_TRIGGER_FN = 'sendMorningBrief';
+
+/** Turns the daily email on or off and sets its hour (0-23). */
+function setMorningEmail(enabled, hour) {
+  hour = Math.max(0, Math.min(23, Math.floor(Number(hour)) || 0));
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === BRIEF_TRIGGER_FN) ScriptApp.deleteTrigger(t);
+  });
+  if (enabled) ScriptApp.newTrigger(BRIEF_TRIGGER_FN).timeBased().everyDays(1).atHour(hour).create();
+  return saveSettings({ morningEmail: enabled ? 'on' : 'off', morningEmailHour: String(hour) });
+}
+
+/** Emails today's brief to the account that deployed the app. Also used by the "Send now" button. */
+function sendMorningBrief() {
+  var to = Session.getEffectiveUser().getEmail();
+  if (!to) throw new Error('Could not find your email address.');
+  var brief = buildMorningBrief_();
+  MailApp.sendEmail({ to: to, subject: brief.subject, htmlBody: brief.html, name: 'Daily Helper' });
+  return to;
+}
+
+function buildMorningBrief_() {
+  var d = getDashboard();
+  var tz = timeZone_();
+  var e = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var dateLabel = Utilities.formatDate(parseLocal_(d.today, '12:00'), tz, 'EEEE d MMMM');
+  var parts = [];
+
+  if (d.weather) {
+    var w = d.weather, t = w.daily[0];
+    parts.push('<h3>Weather</h3><p>' + Math.round(w.current.temp) + w.units.temp + ' now, high ' + Math.round(t.max) +
+      '°, low ' + Math.round(t.min) + '°, ' + (t.precipChance || 0) + '% chance of rain.</p>');
+  }
+
+  var todays = d.events.filter(function (ev) { return ev.date === d.today; });
+  parts.push('<h3>Today\'s events</h3>' + (d.calendarError ? '<p>Couldn\'t load your calendar: ' + e(d.calendarError) + '</p>' : todays.length ? '<ul>' + todays.map(function (ev) {
+    return '<li>' + (ev.allDay ? 'All day' : e(ev.start.slice(11))) + ' · ' + e(ev.title) + '</li>';
+  }).join('') + '</ul>' : '<p>Nothing on your calendar.</p>'));
+
+  var ex = d.regimen[d.dayName] || [];
+  parts.push('<h3>Training</h3>' + (ex.length ? '<ul>' + ex.map(function (x) {
+    return '<li>' + e(formatExercise_(x)) + '</li>';
+  }).join('') + '</ul>' : '<p>Rest day.</p>') +
+    (d.workout.streak ? '<p>Streak: ' + d.workout.streak + ' day' + (d.workout.streak === 1 ? '' : 's') + '.</p>' : ''));
+
+  var items = d.checklist.items.filter(function (t) { return !t.done; });
+  if (items.length) {
+    parts.push('<h3>Checklist</h3><ul>' + items.map(function (t) { return '<li>' + e(t.title) + '</li>'; }).join('') + '</ul>');
+  }
+
+  var y = d.foodHistory[d.foodHistory.length - 2];
+  parts.push('<h3>Food</h3><p>Goal: ' + e(d.settings.calorieGoal) + ' kcal, ' + e(d.settings.proteinGoal) + ' g protein.' +
+    (y && y.calories ? ' Yesterday: ' + Math.round(y.calories) + ' kcal, ' + Math.round(y.protein) + ' g protein.' : '') + '</p>');
+
+  if (d.habits.length) {
+    parts.push('<h3>Habits</h3><p>' + d.habits.map(function (h) {
+      return e(h.icon + ' ' + h.name) + ': ' + (h.target ? h.target + ' ' + e(h.unit) : 'track it');
+    }).join(' · ') + '</p>');
+  }
+
+  return {
+    subject: 'Your day: ' + dateLabel,
+    html: '<div style="font-family:system-ui,sans-serif;max-width:560px">' +
+      '<h2>Good morning. Here\'s ' + e(dateLabel) + '.</h2>' + parts.join('') + '</div>'
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -783,6 +1126,9 @@ function sheet_(def) {
     sheet = ss.insertSheet(def.name);
     sheet.getRange(1, 1, 1, def.headers.length).setValues([def.headers]).setFontWeight('bold');
     sheet.setFrozenRows(1);
+    // Starter rows for a brand-new tab, e.g. a Water counter.
+    var seed = def.seed ? def.seed() : [];
+    if (seed.length) sheet.getRange(2, 1, seed.length, seed[0].length).setValues(seed);
   }
   return sheet;
 }

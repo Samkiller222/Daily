@@ -206,6 +206,72 @@
     .wk-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--border); }
     .wk-row input { flex: 1 1 180px; width: auto; }
     .wk-row .icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
+    /* ----- Morning brief ----- */
+    .brief { grid-column: 1 / -1; }
+    .brief h2 { font-size: 18px; }
+    .brief-lines { display: grid; gap: 2px 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .brief-line { display: flex; gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 8px; cursor: pointer;
+      border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; width: 100%; }
+    .brief-line:hover { background: var(--bg); }
+    .brief-line .ic { flex: 0 0 22px; text-align: center; }
+    /* ----- Workout check-off ----- */
+    .streak { font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+    .streak.hot { color: #c2410c; }
+    .ex-check { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border); margin: 0;
+      color: var(--text); font-size: 15px; cursor: pointer; }
+    .ex-check:first-child { border-top: 0; }
+    .ex-check input { width: 18px; height: 18px; flex: 0 0 18px; margin: 2px 0 0; accent-color: var(--ok); }
+    .ex-check.done .ex-name { text-decoration: line-through; color: var(--muted); }
+    /* ----- Habits ----- */
+    .habit { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+    .habit:first-child { border-top: 0; }
+    .habit .bar { grid-column: 1 / -1; margin: 2px 0 0; }
+    .habit .bar.met > span { background: var(--ok); }
+    .habit .count { color: var(--muted); font-size: 13px; }
+    .tap { display: inline-flex; gap: 6px; }
+    .tap button { width: 40px; height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--card);
+      color: var(--text); font-size: 18px; cursor: pointer; touch-action: manipulation; }
+    .tap button.plus { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .habit-edit { display: grid; grid-template-columns: 52px 1fr 70px 90px auto; gap: 6px; align-items: center; padding: 6px 0; }
+    @media (max-width: 520px) {
+      .habit-edit { grid-template-columns: 48px 1fr 1fr auto; }
+      .habit-edit [data-f=name] { grid-column: 2 / 4; }
+      .habit-edit [data-f=target] { grid-column: 2; }
+      .habit-edit { border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    }
+    .habit-edit .icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
+    /* ----- Summary ----- */
+    .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 16px; }
+    .stat { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+    .stat b { display: block; font-size: 26px; font-weight: 600; line-height: 1.2; }
+    .stat span { font-size: 13px; color: var(--muted); }
+    .cols { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; height: 160px; align-items: end;
+      border-bottom: 1px solid var(--border); margin-top: 8px; }
+    .cols .col { height: 100%; display: flex; align-items: flex-end; justify-content: center; cursor: default; }
+    .cols .col span { display: block; width: 60%; max-width: 36px; min-height: 0; background: var(--accent); border-radius: 4px 4px 0 0; }
+    .cols .col.today span { background: color-mix(in srgb, var(--accent) 70%, var(--text)); }
+    .cols .col:hover span { opacity: .8; }
+    .cols .goal { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--muted); pointer-events: none; }
+    .cols .goal i { position: absolute; right: 0; top: -18px; font-size: 11px; font-style: normal; color: var(--muted);
+      background: var(--card); padding: 0 4px; }
+    .col-labels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; font-size: 12px; color: var(--muted); text-align: center; margin-top: 4px; }
+    .col-labels .today { color: var(--text); font-weight: 600; }
+    .wk-grid { display: grid; grid-template-columns: minmax(90px, 1.4fr) repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; font-size: 13px; }
+    .wk-grid.wk7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .wk-grid .h { color: var(--muted); font-size: 12px; text-align: center; }
+    .wk-grid .h.today { color: var(--text); font-weight: 600; }
+    .wk-grid .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cell2 { height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px;
+      background: var(--bg); color: var(--muted); }
+    .cell2 { overflow: hidden; }
+    @media (max-width: 640px) { .cell2 { font-size: 10px; } }
+    .cell2.done { background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+    .cell2.miss { border: 1px dashed var(--border); }
+    .cell2.heat { color: var(--text); }
+    .notes-list li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; }
+    #tip { position: fixed; z-index: 30; pointer-events: none; background: var(--text); color: var(--bg); font-size: 12px;
+      padding: 6px 8px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity .1s; }
+    #tip.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -217,6 +283,7 @@
     <button data-tab="today" class="active">Today</button>
     <button data-tab="tasks">Checklist</button>
     <button data-tab="food">Food</button>
+    <button data-tab="summary">Summary</button>
     <button data-tab="calendar">Calendar</button>
     <button data-tab="week">Weekly regimen</button>
     <button data-tab="settings">Settings</button>
@@ -229,6 +296,11 @@
     <!-- TODAY -->
     <section id="tab-today" class="hidden">
       <div class="grid">
+        <div class="card brief">
+          <h2><span id="briefTitle">Good morning</span></h2>
+          <div class="brief-lines" id="briefBody"></div>
+        </div>
+
         <div class="card" id="weatherCard">
           <h2><span>Weather <span class="muted small" id="wxLocation"></span></span></h2>
           <div id="weatherBody"></div>
@@ -246,14 +318,20 @@
         </div>
 
         <div class="card">
-          <h2><span id="todayTitle">Today's training</span>
+          <h2><span><span id="todayTitle">Today's training</span> <span class="streak" id="streak"></span></span>
             <button class="btn small" id="editTodayBtn">Edit</button></h2>
-          <ul class="plain" id="todayList"></ul>
+          <div id="todayList"></div>
+          <p class="muted small" id="weekTraining" style="margin:6px 0 0"></p>
           <label for="logNotes">Notes for today</label>
           <textarea id="logNotes" rows="2" placeholder="How did it go?"></textarea>
           <div class="row" style="margin-top:10px">
             <button class="btn" id="doneBtn">Mark as done</button>
           </div>
+        </div>
+
+        <div class="card">
+          <h2><span>Habits</span><button class="btn small" id="habitsManageBtn">⚙ Edit</button></h2>
+          <div id="habitsBody"></div>
         </div>
 
         <div class="card">
@@ -318,12 +396,13 @@
     <section id="tab-food" class="hidden">
       <div class="grid">
         <div class="card">
-          <h2><span>Today</span></h2>
+          <h2><span>Today</span><button class="btn small" id="editGoalsBtn">Edit goals</button></h2>
           <div id="foodSummary"></div>
         </div>
         <div class="card">
           <h2><span>Last 7 days</span></h2>
           <div id="foodHistory"></div>
+          <p class="small" id="foodStreak" style="margin:10px 0 0"></p>
         </div>
       </div>
 
@@ -364,6 +443,17 @@
         <h2><span>Today's log</span></h2>
         <div id="foodLog"></div>
       </div>
+    </section>
+
+    <!-- SUMMARY -->
+    <section id="tab-summary" class="hidden">
+      <div class="cal-toolbar">
+        <button class="icon-btn" id="sumPrev" title="Previous week">‹</button>
+        <button class="btn" id="sumThis">This week</button>
+        <button class="icon-btn" id="sumNext" title="Next week">›</button>
+        <h2 id="sumTitle"></h2>
+      </div>
+      <div id="sumBody"><p class="muted">Loading…</p></div>
     </section>
 
     <!-- CALENDAR -->
@@ -444,6 +534,18 @@
           <div class="row" style="margin-top:10px"><button class="btn primary" id="saveGoalsBtn">Save goals</button></div>
         </div>
         <div class="card">
+          <h2>Morning email</h2>
+          <p class="small" style="margin-top:0">Get the morning brief (weather, events, training, checklist, food and habits) in your inbox every day.</p>
+          <label class="check" style="margin-top:0"><input type="checkbox" id="mailOn"> Send it every day</label>
+          <label for="mailHour">Around</label>
+          <select id="mailHour"></select>
+          <div class="row" style="margin-top:10px">
+            <button class="btn primary" id="mailSaveBtn">Save</button>
+            <button class="btn" id="mailTestBtn">Send one now</button>
+          </div>
+          <p class="muted small">Sent to the Google account that deployed the app, in the script's time zone.</p>
+        </div>
+        <div class="card">
           <h2>Gemini (food photos)</h2>
           <p class="small">Status: <b id="geminiStatus">not set</b></p>
           <label for="geminiKey">API key</label>
@@ -462,6 +564,7 @@
 
   <div class="modal-bg hidden" id="evModalBg"><div class="modal" id="evModal"></div></div>
   <div class="toast" id="toast"></div>
+  <div id="tip"></div>
 
 <script>
   // ---------- Server bridge ----------
@@ -538,7 +641,8 @@
     document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
     if (name === 'calendar') calRender();
     if (name === 'tasks') showTaskSettings(false);
-    ['today', 'tasks', 'food', 'calendar', 'week', 'settings'].forEach(function (t) { $('tab-' + t).classList.toggle('hidden', t !== name); });
+    if (name === 'summary') sumRender();
+    ['today', 'tasks', 'food', 'summary', 'calendar', 'week', 'settings'].forEach(function (t) { $('tab-' + t).classList.toggle('hidden', t !== name); });
     if (name === 'week' && !state.editDay) selectDay(state.data.dayName);
   }
   document.querySelectorAll('nav button').forEach(function (b) {
@@ -579,16 +683,41 @@
   }
 
   function renderToday() {
-    var d = state.data, list = d.regimen[d.dayName] || [];
+    var d = state.data, list = d.regimen[d.dayName] || [], w = d.workout, checked = w.checked;
     $('todayTitle').textContent = d.dayName + "'s training";
-    $('todayList').innerHTML = list.length ? list.map(function (x) {
-      return '<li><div class="ex-name">' + esc(x.exercise) + '</div>' +
-        '<div class="muted small">' + esc(exDetail(x)) + (x.notes ? ' · ' + esc(x.notes) : '') + '</div></li>';
-    }).join('') : '<li class="muted">Rest day — nothing scheduled. Tap Edit to add exercises.</li>';
+    $('todayList').innerHTML = list.length ? list.map(function (x, i) {
+      var on = checked.indexOf(x.exercise) !== -1;
+      return '<label class="ex-check' + (on ? ' done' : '') + '"><input type="checkbox" data-i="' + i + '"' + (on ? ' checked' : '') + '>' +
+        '<div><div class="ex-name">' + esc(x.exercise) + '</div>' +
+        '<div class="muted small">' + esc(exDetail(x)) + (x.notes ? ' · ' + esc(x.notes) : '') + '</div></div></label>';
+    }).join('') : '<p class="muted" style="margin:0">Rest day. Nothing scheduled. Tap Edit to add exercises.</p>';
+    $('todayList').querySelectorAll('input[type=checkbox]').forEach(function (box) {
+      box.onchange = function () { tickExercise(list[+box.dataset.i].exercise, box.checked); };
+    });
+    $('streak').textContent = w.streak ? '🔥 ' + w.streak + '-day streak' : '';
+    $('streak').classList.toggle('hot', w.streak >= 3);
+    $('weekTraining').textContent = w.weekPlanned ? 'This week: ' + w.weekDone + ' of ' + w.weekPlanned + ' sessions done' : '';
     var done = d.log && d.log.completed;
     $('doneBtn').textContent = done ? '✓ Done' : 'Mark as done';
     $('doneBtn').classList.toggle('done', !!done);
     $('logNotes').value = d.log ? d.log.notes : '';
+  }
+
+  // Ticking the last exercise marks the day done on the server.
+  function tickExercise(name, on) {
+    var w = state.data.workout, before = w.checked.slice();
+    w.checked = on ? before.concat([name]) : before.filter(function (n) { return n !== name; });
+    renderToday();
+    call('setExerciseDone', state.data.today, name, on).then(function (res) {
+      applyWorkout(res);
+      if (on && res.completed && !(state.data.log && state.data.log.completed)) toast('Workout complete! 💪');
+      state.data.log = { date: res.date, completed: res.completed, notes: res.notes };
+      renderToday(); renderBrief();
+    }).catch(function (e) { w.checked = before; renderToday(); fail(e); });
+  }
+  function applyWorkout(w) { state.data.workout = w; }
+  function refreshWorkout() {
+    return call('getWorkoutDay', state.data.today).then(function (w) { applyWorkout(w); renderToday(); renderBrief(); }).catch(function () {});
   }
 
   function renderEvents() {
@@ -686,7 +815,7 @@
     var btn = this, completed = !(state.data.log && state.data.log.completed);
     btn.disabled = true;
     call('saveLogEntry', state.data.today, completed, $('logNotes').value).then(function (log) {
-      state.data.log = log; renderToday(); toast(completed ? 'Nice work! Logged.' : 'Unmarked');
+      state.data.log = log; renderToday(); refreshWorkout(); toast(completed ? 'Nice work! Logged.' : 'Unmarked');
     }).catch(fail).then(function () { btn.disabled = false; });
   };
   $('logNotes').onchange = function () {
@@ -698,7 +827,7 @@
   $('addEventBtn').onclick = function () {
     var btn = this; btn.disabled = true;
     call('addWorkoutToCalendar', state.data.today, $('workoutTime').value, $('workoutMinutes').value).then(function (events) {
-      state.data.events = events; renderEvents(); toast('Added to your calendar');
+      state.data.events = events; renderEvents(); renderBrief(); toast('Added to your calendar');
     }).catch(fail).then(function () { btn.disabled = false; });
   };
 
@@ -712,11 +841,26 @@
     $('workoutMinutes').value = s.workoutMinutes || '60';
     ['calorie', 'protein', 'carbs', 'fat'].forEach(function (k) { $(k + 'Goal').value = s[k + 'Goal']; });
     $('geminiModel').value = s.geminiModel || '';
+    $('mailOn').checked = s.morningEmail === 'on';
+    $('mailHour').value = String(s.morningEmailHour || '7');
   }
+  $('mailHour').innerHTML = Array.from({ length: 24 }, function (_, h) {
+    return '<option value="' + h + '">' + new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' }) + '</option>';
+  }).join('');
+  $('mailSaveBtn').onclick = function () {
+    var btn = this, on = $('mailOn').checked; btn.disabled = true;
+    call('setMorningEmail', on, $('mailHour').value).then(function (s) {
+      state.data.settings = s; renderSettings(); toast(on ? 'Morning email on' : 'Morning email off');
+    }).catch(fail).then(function () { btn.disabled = false; });
+  };
+  $('mailTestBtn').onclick = function () {
+    var btn = this; btn.disabled = true;
+    call('sendMorningBrief').then(function (to) { toast('Sent to ' + to); }).catch(fail).then(function () { btn.disabled = false; });
+  };
   $('saveGoalsBtn').onclick = function () {
     var p = {};
     ['calorie', 'protein', 'carbs', 'fat'].forEach(function (k) { p[k + 'Goal'] = $(k + 'Goal').value; });
-    call('saveSettings', p).then(function (s) { state.data.settings = s; renderFood(); toast('Goals saved'); }).catch(fail);
+    call('saveSettings', p).then(function (s) { state.data.settings = s; renderFood(); renderBrief(); toast('Goals saved'); }).catch(fail);
   };
   $('saveKeyBtn').onclick = function () {
     call('saveGeminiKey', $('geminiKey').value).then(function (ok) {
@@ -742,8 +886,8 @@
 
   function reloadWeather() {
     return call('getWeather').then(function (w) {
-      state.data.weather = w; state.data.weatherError = null; renderWeather();
-    }).catch(function (e) { state.data.weatherError = e.message || String(e); renderWeather(); });
+      state.data.weather = w; state.data.weatherError = null; renderWeather(); renderBrief();
+    }).catch(function (e) { state.data.weatherError = e.message || String(e); renderWeather(); renderBrief(); });
   }
 
   $('locSearchBtn').onclick = function () {
@@ -773,13 +917,13 @@
     call('saveSettings', { calendarId: this.value }).then(function (s) {
       state.data.settings = s; return call('getUpcomingEvents', 7);
     }).then(function (events) {
-      state.data.events = events; state.data.calendarError = null; renderEvents(); toast('Calendar updated');
+      state.data.events = events; state.data.calendarError = null; renderEvents(); renderBrief(); toast('Calendar updated');
     }).catch(fail);
   };
 
   // ---------- Checklist ----------
   // The same list is drawn on the dashboard and on the Checklist tab.
-  function applyChecklist(c) { state.data.checklist = c; renderTasks(); }
+  function applyChecklist(c) { state.data.checklist = c; renderTasks(); renderBrief(); }
   function shortDate(s) { return parseDate(s).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }); }
 
   function taskHtml(t, upcoming) {
@@ -957,15 +1101,57 @@
     });
     return html;
   }
+  // A day is on target when calories land within 10% of the goal.
+  function onTarget(h) { var g = goal('calorie'); return g > 0 && h.calories > 0 && Math.abs(h.calories - g) <= g * 0.1; }
+  function foodStreakText() {
+    var hist = state.data.foodHistory || [], streak = 0, logged = [], hit = 0;
+    if (!goal('calorie')) return '';
+    // Count back from yesterday; today counts once it's on target.
+    for (var i = hist.length - 1; i >= 0; i--) {
+      if (onTarget(hist[i])) { streak++; continue; }
+      if (i === hist.length - 1) continue;
+      break;
+    }
+    // The average leaves out today, which is still in progress.
+    hist.slice(-7).forEach(function (h, i, a) { if (h.calories > 0) { if (i < a.length - 1) logged.push(h.calories); if (onTarget(h)) hit++; } });
+    var avg = logged.length ? logged.reduce(function (a, b) { return a + b; }, 0) / logged.length : 0;
+    return (streak ? '🎯 <b>' + streak + '-day</b> on-target streak · ' : '') +
+      '<span class="muted">On target ' + hit + ' of the last 7 days' + (avg ? ' · average ' + fmtNum(avg) + ' kcal' : '') + '</span>';
+  }
+
+  function openGoals() {
+    var s = state.data.settings, f = [['calorie', 'Calories'], ['protein', 'Protein (g)'], ['carbs', 'Carbs (g)'], ['fat', 'Fat (g)']];
+    $('evModal').innerHTML = '<h3>Daily goals</h3><p class="muted small" style="margin:0">Your progress bars and the on-target streak use these.</p>' +
+      f.map(function (x) { return '<label for="mg' + x[0] + '">' + x[1] + '</label><input id="mg' + x[0] + '" type="number" min="0" value="' + esc(s[x[0] + 'Goal']) + '">'; }).join('') +
+      '<p class="muted small" id="mgHint"></p>' +
+      '<div class="actions"><button class="btn" id="mgCancel">Cancel</button><button class="btn primary" id="mgSave">Save goals</button></div>';
+    $('evModalBg').classList.remove('hidden');
+    function hint() {
+      var kcal = 4 * (+$('mgprotein').value || 0) + 4 * (+$('mgcarbs').value || 0) + 9 * (+$('mgfat').value || 0);
+      $('mgHint').textContent = kcal ? 'Your macros add up to about ' + r0(kcal) + ' kcal.' : '';
+    }
+    ['protein', 'carbs', 'fat'].forEach(function (k) { $('mg' + k).oninput = hint; }); hint();
+    $('mgCancel').onclick = closeModal;
+    $('mgSave').onclick = function () {
+      var p = {}, btn = this; btn.disabled = true;
+      f.forEach(function (x) { p[x[0] + 'Goal'] = $('mg' + x[0]).value; });
+      call('saveSettings', p).then(function (s) {
+        state.data.settings = s; renderSettings(); renderFood(); renderBrief(); closeModal(); toast('Goals saved');
+      }).catch(function (e) { btn.disabled = false; fail(e); });
+    };
+  }
+  $('editGoalsBtn').onclick = openGoals;
+
   function renderFood() {
     var d = state.data, list = d.food || [];
     $('foodSummary').innerHTML = macroBlock(list);
     $('todayFood').innerHTML = macroBlock(list);
     var g = goal('calorie');
-    $('foodHistory').innerHTML = (d.foodHistory || []).map(function (h) {
+    $('foodHistory').innerHTML = (d.foodHistory || []).slice(-7).map(function (h) {
       return '<div class="hist"><span class="muted">' + (h.date === d.today ? 'Today' : parseDate(h.date).toLocaleDateString([], { weekday: 'short' })) +
-        '</span>' + bar(h.calories, g) + '<span style="text-align:right">' + r0(h.calories) + '</span></div>';
+        '</span>' + bar(h.calories, g).replace(' over', onTarget(h) ? '' : ' over') + '<span style="text-align:right">' + r0(h.calories) + '</span></div>';
     }).join('');
+    $('foodStreak').innerHTML = foodStreakText();
     var meals = ['Breakfast', 'Lunch', 'Dinner', 'Snack'], html = '';
     list.forEach(function (f) { if (meals.indexOf(f.meal) === -1) meals.push(f.meal); });
     meals.forEach(function (meal) {
@@ -990,7 +1176,7 @@
       : 'To use photos, add your Gemini API key in Settings. You can still add food manually.';
     $('geminiStatus').textContent = d.geminiConfigured ? 'key saved' : 'not set';
   }
-  function applyFood(res) { state.data.food = res.food; state.data.foodHistory = res.foodHistory; renderFood(); }
+  function applyFood(res) { state.data.food = res.food; state.data.foodHistory = res.foodHistory; renderFood(); renderBrief(); }
 
   function renderReview() {
     $('reviewBox').classList.toggle('hidden', !review.length);
@@ -1390,7 +1576,7 @@
   function afterCalChange() {
     cal.cache = {};
     calRender();
-    call('getUpcomingEvents', 7).then(function (events) { state.data.events = events; renderEvents(); }).catch(function () {});
+    call('getUpcomingEvents', 7).then(function (events) { state.data.events = events; renderEvents(); renderBrief(); }).catch(function () {});
   }
 
   function calMove(dir) {
@@ -1410,11 +1596,244 @@
   $('calDayAdd').onclick = function () { openNewEvent(cal.sel); };
   $('goCalBtn').onclick = function () { showTab('calendar'); };
 
+  // ---------- Morning brief ----------
+  // One glance at the day, built from what the page already loaded.
+  function fmtNum(n) { return r0(n).toLocaleString(); }
+  function renderBrief() {
+    var d = state.data; if (!d) return;
+    var h = new Date().getHours(), lines = [];
+    $('briefTitle').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + '. Here\'s your ' + d.dayName + '.';
+    function line(icon, html, go) { lines.push('<button class="brief-line"' + (go ? ' data-go="' + go + '"' : '') + '><span class="ic">' + icon + '</span><span>' + html + '</span></button>'); }
+
+    if (d.weather) {
+      var w = d.weather, t = w.daily[0], now = wx(w.current.code, w.current.isDay);
+      line(now.icon, '<b>' + r0(w.current.temp) + w.units.temp + '</b> and ' + esc(now.label.toLowerCase()) + '. High ' + r0(t.max) + '°, low ' + r0(t.min) + '°' +
+        (t.precipChance >= 30 ? ', <b>' + t.precipChance + '% chance of rain</b>' : '') + '.', '#weatherCard');
+    } else if (!d.settings.latitude) line('🌡️', '<span class="muted">Set your location in Settings to see the weather.</span>', 'settings');
+
+    var todays = (d.events || []).filter(function (e) { return e.date === d.today; });
+    var nowIso = ymd(new Date()) + 'T' + pad(new Date().getHours()) + ':' + pad(new Date().getMinutes());
+    var next = todays.filter(function (e) { return !e.allDay && (e.end || e.start) > nowIso; })[0];
+    line('📅', todays.length ? '<b>' + todays.length + ' event' + (todays.length === 1 ? '' : 's') + '</b> today' +
+      (next ? '. Next: ' + esc(fmtTime(next.start)) + ' ' + esc(next.title) : '') + '.' : 'Nothing on your calendar today.', 'calendar');
+
+    var ex = d.regimen[d.dayName] || [], wk = d.workout;
+    var streak = wk.streak ? ' 🔥 ' + wk.streak + '-day streak.' : '';
+    if (!ex.length) line('🧘', 'Rest day.' + streak, '#todayList');
+    else if (wk.completed) line('🏋', '<b>Workout done.</b>' + streak, '#todayList');
+    else line('🏋', '<b>' + esc(ex.map(function (x) { return x.exercise; }).slice(0, 3).join(', ')) + (ex.length > 3 ? ' +' + (ex.length - 3) : '') + '</b>' +
+      (wk.checked.length ? ' · ' + wk.checked.length + ' of ' + ex.length + ' done' : '') + '.' + streak, '#todayList');
+
+    var items = d.checklist.items, left = items.filter(function (t) { return !t.done; });
+    if (items.length) line('✅', left.length ? '<b>' + left.length + ' task' + (left.length === 1 ? '' : 's') + ' left</b>. Next: ' + esc(left[0].title) + '.'
+      : '<b>Checklist done.</b>', 'tasks');
+
+    var kcal = sum(d.food || [], 'calories'), prot = sum(d.food || [], 'protein'), g = goal('calorie'), pg = goal('protein');
+    var hist = d.foodHistory || [], y = hist[hist.length - 2];
+    var food = g ? (kcal > g ? '<b>' + fmtNum(kcal - g) + ' kcal over</b> your goal' : '<b>' + fmtNum(g - kcal) + ' kcal left</b>') : fmtNum(kcal) + ' kcal so far';
+    if (pg) food += prot < pg ? ' · ' + fmtNum(pg - prot) + ' g protein to go' : ' · protein goal hit';
+    if (y && y.calories) food += '. Yesterday ' + fmtNum(y.calories) + ' kcal' + (onTarget(y) ? ', on target' : '');
+    line('🍽', food + '.', 'food');
+
+    if ((d.habits || []).length) line('📈', d.habits.map(function (hb) {
+      return esc(hb.icon) + ' ' + esc(hb.name) + ' ' + hb.count + (hb.target ? '/' + hb.target : '') + (hb.unit ? ' ' + esc(hb.unit) : '');
+    }).join(' · '), '#habitsBody');
+
+    $('briefBody').innerHTML = lines.join('');
+    $('briefBody').querySelectorAll('[data-go]').forEach(function (b) {
+      b.onclick = function () {
+        var go = b.dataset.go;
+        if (go.charAt(0) === '#') $(go.slice(1)).closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else showTab(go);
+      };
+    });
+  }
+
+  // ---------- Habits ----------
+  var habitSeq = 0;
+  function renderHabits() {
+    var list = state.data.habits || [];
+    $('habitsBody').innerHTML = list.length ? list.map(function (h) {
+      var met = h.target && h.count >= h.target;
+      return '<div class="habit" data-id="' + esc(h.id) + '"><div><span>' + esc(h.icon) + ' ' + esc(h.name) + '</span> ' +
+        '<span class="count">' + h.count + (h.target ? ' / ' + h.target : '') + (h.unit ? ' ' + esc(h.unit) : '') + (met ? ' ✓' : '') + '</span></div>' +
+        '<span class="tap"><button data-d="-1" title="One less" aria-label="One less ' + esc(h.name) + '">−</button>' +
+        '<button class="plus" data-d="1" title="One more" aria-label="One more ' + esc(h.name) + '">+</button></span>' +
+        (h.target ? '<div class="bar' + (met ? ' met' : '') + '"><span style="width:' + Math.min(100, h.count / h.target * 100) + '%"></span></div>' : '') + '</div>';
+    }).join('') : '<p class="muted" style="margin:0">No habits yet. Tap Edit to add one, like water or sleep.</p>';
+    $('habitsBody').querySelectorAll('.habit').forEach(function (row) {
+      row.querySelectorAll('button').forEach(function (b) { b.onclick = function () { bumpHabit(row.dataset.id, +b.dataset.d); }; });
+    });
+  }
+  // Counts change on screen straight away; only the newest reply is applied so fast taps don't flicker.
+  function bumpHabit(id, delta) {
+    var h = state.data.habits.filter(function (x) { return x.id === id; })[0];
+    if (!h || h.count + delta < 0) return;
+    h.count += delta; renderHabits(); renderBrief();
+    var seq = ++habitSeq;
+    call('bumpHabit', id, state.data.today, delta).then(function (list) {
+      if (seq === habitSeq) { state.data.habits = list; renderHabits(); renderBrief(); }
+    }).catch(function (e) { h.count -= delta; renderHabits(); renderBrief(); fail(e); });
+  }
+  function applyHabits(list) { state.data.habits = list; renderHabits(); renderBrief(); }
+
+  function openHabits() {
+    var fields = '<input data-f="icon" placeholder="💧" maxlength="4"><input data-f="name" placeholder="Name, e.g. Water">' +
+      '<input data-f="target" type="number" min="0" step="any" placeholder="Goal"><input data-f="unit" placeholder="Unit">';
+    function draw() {
+      var list = state.data.habits || [];
+      $('evModal').innerHTML = '<h3>Habits</h3><p class="muted small" style="margin:0 0 8px">Each one gets a counter on the Today tab. Changes save straight away.</p>' +
+        list.map(function (h) { return '<div class="habit-edit" data-id="' + esc(h.id) + '">' + fields + '<button class="icon" title="Delete">✕</button></div>'; }).join('') +
+        '<label>New habit</label><div class="habit-edit" id="habitNew">' + fields + '<button class="btn primary" id="habitAdd">Add</button></div>' +
+        '<div class="actions"><button class="btn primary" id="habitDone">Done</button></div>';
+      list.forEach(function (h) {
+        var row = $('evModal').querySelector('[data-id="' + h.id.replace(/"/g, '') + '"]');
+        if (!row) return;
+        row.querySelectorAll('input').forEach(function (inp) {
+          inp.value = h[inp.dataset.f];
+          inp.onchange = function () {
+            var v = {}; row.querySelectorAll('input').forEach(function (i) { v[i.dataset.f] = i.value; }); v.id = h.id;
+            call('saveHabit', v, state.data.today).then(function (l) { applyHabits(l); toast('Saved'); }).catch(fail);
+          };
+        });
+        row.querySelector('.icon').onclick = function () {
+          if (!confirm('Delete "' + h.name + '" and its history?')) return;
+          call('deleteHabit', h.id, state.data.today).then(function (l) { applyHabits(l); draw(); toast('Habit deleted'); }).catch(fail);
+        };
+      });
+      $('habitAdd').onclick = function () {
+        var v = {}, btn = this; $('habitNew').querySelectorAll('input').forEach(function (i) { v[i.dataset.f] = i.value; });
+        if (!v.name.trim()) { $('habitNew').querySelector('[data-f=name]').focus(); return toast('Name the habit first'); }
+        btn.disabled = true;
+        call('saveHabit', v, state.data.today).then(function (l) { applyHabits(l); draw(); toast('Habit added'); })
+          .catch(function (e) { btn.disabled = false; fail(e); });
+      };
+      $('habitDone').onclick = closeModal;
+    }
+    draw();
+    $('evModalBg').classList.remove('hidden');
+  }
+  $('habitsManageBtn').onclick = openHabits;
+
+  // ---------- Weekly summary ----------
+  var sumState = { start: null, data: null };
+  function sumRender() {
+    if (!sumState.start) sumState.start = mondayOf(parseDate(state.data.today));
+    var key = ymd(sumState.start);
+    var end = addDays(sumState.start, 6), md = { month: 'short', day: 'numeric' };
+    $('sumTitle').textContent = sumState.start.toLocaleDateString([], md) + ' – ' + end.toLocaleDateString([], md) +
+      (ymd(sumState.start) === ymd(mondayOf(parseDate(state.data.today))) ? ' · this week' : '');
+    if (!sumState.data || sumState.data.start !== key) $('sumBody').innerHTML = '<p class="muted">Loading…</p>';
+    call('getWeekSummary', key).then(function (data) {
+      if (ymd(sumState.start) !== key) return; // moved on
+      sumState.data = data; renderSummary(data);
+    }).catch(function (e) { $('sumBody').innerHTML = ''; fail(e); });
+  }
+  function sumMove(n) { sumState.start = addDays(sumState.start, 7 * n); sumRender(); }
+  $('sumPrev').onclick = function () { sumMove(-1); };
+  $('sumNext').onclick = function () { sumMove(1); };
+  $('sumThis').onclick = function () { sumState.start = null; sumRender(); };
+
+  // Column chart: one bar per day, optional dashed goal line, a tooltip per bar.
+  function colChart(days, values, opts) {
+    var top = Math.max.apply(null, values.concat([opts.goal || 0, opts.max || 0, 1])) * (opts.max ? 1 : 1.1);
+    var html = '<div class="cols">' + days.map(function (d, i) {
+      return '<div class="col' + (d.date === state.data.today ? ' today' : '') + '" data-tip="' + esc(opts.tip(d, values[i])) + '">' +
+        '<span style="height:' + (values[i] / top * 100) + '%"></span></div>';
+    }).join('');
+    if (opts.goal) html += '<div class="goal" style="bottom:' + (opts.goal / top * 100) + '%"><i>' + esc(opts.goalLabel) + '</i></div>';
+    return html + '</div><div class="col-labels">' + days.map(function (d) {
+      return '<span' + (d.date === state.data.today ? ' class="today"' : '') + '>' + d.day.slice(0, 3) + '</span>';
+    }).join('') + '</div>';
+  }
+  function dayHead(days) {
+    return '<span></span>' + days.map(function (d) { return '<span class="h' + (d.date === state.data.today ? ' today' : '') + '">' + d.day.slice(0, 3) + '</span>'; }).join('');
+  }
+  function longDay(d) { return parseDate(d.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }); }
+
+  function renderSummary(data) {
+    var days = data.days, today = state.data.today, g = goal('calorie');
+    var logged = days.filter(function (d) { return d.foodItems > 0; });
+    var avg = function (k) { return logged.length ? sum(logged, k) / logged.length : 0; };
+    var hit = logged.filter(onTarget).length;
+    var planned = days.filter(function (d) { return d.planned; }).length, trained = days.filter(function (d) { return d.trained; }).length;
+    var tDone = sum(days, 'tasksDone'), tTotal = sum(days.filter(function (d) { return d.date <= today; }), 'tasksTotal');
+
+    var html = '<div class="stats">' +
+      '<div class="stat"><span>Average calories</span><b>' + (logged.length ? fmtNum(avg('calories')) : '–') + '</b><span>' + (g ? 'goal ' + fmtNum(g) : 'no goal set') + '</span></div>' +
+      '<div class="stat"><span>Days on target</span><b>' + hit + ' / ' + logged.length + '</b><span>within 10% of goal</span></div>' +
+      '<div class="stat"><span>Workouts</span><b>' + trained + ' / ' + Math.max(planned, trained) + '</b><span>sessions done</span></div>' +
+      '<div class="stat"><span>Checklist</span><b>' + (tTotal ? r0(Math.min(tDone, tTotal) / tTotal * 100) + '%' : '–') + '</b><span>' + tDone + ' of ' + tTotal + ' tasks ticked</span></div>' +
+      '</div><div class="grid">';
+
+    html += '<div class="card"><h2><span>Calories</span></h2>' + colChart(days, days.map(function (d) { return d.calories; }), {
+      goal: g, goalLabel: 'goal ' + fmtNum(g),
+      tip: function (d, v) { return longDay(d) + ': ' + (d.foodItems ? fmtNum(v) + ' kcal' + (g ? ' (' + (onTarget(d) ? 'on target' : v > g ? fmtNum(v - g) + ' over' : fmtNum(g - v) + ' under') + ')' : '') : 'nothing logged'); }
+    }) + '</div>';
+
+    html += '<div class="card"><h2><span>Macros <span class="muted small">daily average</span></span></h2>' +
+      [['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat']].map(function (m) {
+        var v = avg(m[0]);
+        return '<div class="macro-row"><span>' + m[1] + '</span><span class="muted">' + r0(v) + ' / ' + goal(m[0]) + ' g</span></div>' + bar(v, goal(m[0]));
+      }).join('') + (logged.length ? '<p class="muted small" style="margin:0">Averaged over the ' + logged.length + ' day' + (logged.length === 1 ? '' : 's') + ' with food logged.</p>' : '<p class="muted small">No food logged this week.</p>') + '</div>';
+
+    var notes = days.filter(function (d) { return d.notes; });
+    html += '<div class="card"><h2><span>Training</span></h2><div class="wk-grid wk7">' + dayHead(days).replace('<span></span>', '') +
+      days.map(function (d) {
+        var future = d.date > today;
+        if (d.trained) return '<span class="cell2 done" data-tip="' + esc(longDay(d)) + ': done">✓</span>';
+        if (!d.planned) return '<span class="cell2" data-tip="' + esc(longDay(d)) + ': rest day">rest</span>';
+        return '<span class="cell2' + (future || d.date === today ? '' : ' miss') + '" data-tip="' + esc(longDay(d)) + (future ? ': planned' : d.date === today ? ': not done yet' : ': missed') + '">' + (future ? '·' : '–') + '</span>';
+      }).join('') + '</div>' +
+      (notes.length ? '<ul class="plain notes-list" style="margin-top:10px">' + notes.map(function (d) {
+        return '<li><span class="muted small">' + d.day.slice(0, 3) + '</span><span class="small">' + esc(d.notes) + '</span></li>';
+      }).join('') + '</ul>' : '') + '</div>';
+
+    html += '<div class="card"><h2><span>Checklist</span></h2>' + colChart(days, days.map(function (d) {
+      return d.tasksTotal && d.date <= today ? d.tasksDone / d.tasksTotal * 100 : 0;
+    }), { max: 100, tip: function (d) { return longDay(d) + ': ' + (d.date > today ? 'coming up' : d.tasksDone + ' of ' + d.tasksTotal + ' done'); } }) +
+      '<p class="muted small" style="margin:8px 0 0">Share of each day\'s tasks ticked off.</p></div>';
+
+    if (data.habits.length) {
+      html += '<div class="card"><h2><span>Habits</span></h2><div class="wk-grid">' + dayHead(days) + data.habits.map(function (h) {
+        return '<span class="name">' + esc(h.icon + ' ' + h.name) + '</span>' + h.counts.map(function (c, i) {
+          var ratio = h.target ? Math.min(1, c / h.target) : (c ? 1 : 0);
+          var style = c ? ' style="background:color-mix(in srgb, var(--accent) ' + r0(15 + ratio * 55) + '%, var(--card))"' : '';
+          return '<span class="cell2' + (c ? ' heat' : '') + '"' + style + ' data-tip="' + esc(longDay(days[i]) + ': ' + c + (h.target ? ' of ' + h.target : '') + (h.unit ? ' ' + h.unit : '')) + '">' +
+            (c || '') + (h.target && c >= h.target ? '✓' : '') + '</span>';
+        }).join('');
+      }).join('') + '</div></div>';
+    }
+    $('sumBody').innerHTML = html + '</div>';
+  }
+
+  // Tooltips for anything with data-tip: hover with a mouse, tap on a phone.
+  (function () {
+    var tip = $('tip'), timer;
+    function show(el, x, y) {
+      tip.textContent = el.dataset.tip; tip.classList.add('show');
+      var w = tip.offsetWidth, left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2));
+      tip.style.left = left + 'px'; tip.style.top = Math.max(8, y - 40) + 'px';
+    }
+    document.addEventListener('pointerover', function (e) {
+      var el = e.target.closest && e.target.closest('[data-tip]');
+      if (el && e.pointerType === 'mouse') show(el, e.clientX, e.clientY); else if (!el) tip.classList.remove('show');
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'mouse' && tip.classList.contains('show')) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); }
+    });
+    document.addEventListener('pointerdown', function (e) {
+      var el = e.target.closest && e.target.closest('[data-tip]');
+      if (!el || e.pointerType === 'mouse') return;
+      show(el, e.clientX, e.clientY); clearTimeout(timer); timer = setTimeout(function () { tip.classList.remove('show'); }, 1800);
+    });
+  })();
+
   // ---------- Boot ----------
   call('getDashboard').then(function (data) {
     state.data = data;
     $('headerDate').textContent = parseDate(data.today).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-    renderWeather(); renderToday(); renderEvents(); renderSettings(); renderFood(); renderTasks();
+    renderWeather(); renderToday(); renderEvents(); renderSettings(); renderFood(); renderTasks(); renderHabits(); renderBrief();
     document.querySelectorAll('form.task-add input[type=date]').forEach(function (i) { i.value = data.today; });
     $('loading').classList.add('hidden');
     showTab('today');
@@ -1440,12 +1859,42 @@
       Saturday: [{ exercise: 'Long run', sets: '', reps: '10 km', weight: '', notes: '' }], Sunday: [] };
     var settings = { locationName: 'Austin, Texas, United States', latitude: '30.27', longitude: '-97.74',
       units: 'fahrenheit', calendarId: 'primary', workoutTime: '07:00', workoutMinutes: '60',
-      calorieGoal: '2200', proteinGoal: '160', carbsGoal: '220', fatGoal: '70', geminiModel: 'gemini-3.8-flash' };
+      calorieGoal: '2200', proteinGoal: '160', carbsGoal: '220', fatGoal: '70', geminiModel: 'gemini-3.8-flash',
+      morningEmail: 'off', morningEmailHour: '7' };
     var food = [{ id: 'a', date: iso(today), time: '08:10', meal: 'Breakfast', food: 'Greek yogurt with berries', portion: '250 g',
       calories: 280, protein: 22, carbs: 30, fat: 7, source: 'Gemini' },
       { id: 'b', date: iso(today), time: '08:10', meal: 'Breakfast', food: 'Black coffee', portion: '1 cup', calories: 5, protein: 0, carbs: 0, fat: 0, source: 'Manual' }];
-    var hist = function () { return Array.from({ length: 7 }, function (_, i) { var d = iso(new Date(today.getTime() - (6 - i) * 864e5));
-      return { date: d, calories: i === 6 ? food.reduce(function (t, f) { return t + f.calories; }, 0) : [2100, 2350, 1980, 2240, 2050, 2400][i], protein: 0, carbs: 0, fat: 0 }; }); };
+    var pastKcal = [2100, 2350, 1980, 2240, 2050, 2400, 2150, 1850, 2600, 2180];
+    var todayFood = function (k) { return food.filter(function (f) { return f.date === iso(today); }).reduce(function (t, f) { return t + (+f[k] || 0); }, 0); };
+    var hist = function () { return Array.from({ length: 30 }, function (_, i) { var back = 29 - i, d = iso(new Date(today.getTime() - back * 864e5));
+      if (!back) return { date: d, calories: todayFood('calories'), protein: todayFood('protein'), carbs: todayFood('carbs'), fat: todayFood('fat') };
+      var k = pastKcal[back % 10]; return { date: d, calories: k, protein: r0(k * 0.075), carbs: r0(k * 0.1), fat: r0(k * 0.032) }; }); };
+    var workout = { checked: [], completed: false, notes: '', streak: 4, weekDone: 1, weekPlanned: 5 };
+    function workoutDay() { return Object.assign({ date: iso(today), day: dayName }, workout, { checked: workout.checked.slice(),
+      streak: workout.streak + (workout.completed ? 1 : 0), weekDone: workout.weekDone + (workout.completed ? 1 : 0) }); }
+    var habits = [{ id: 'h1', name: 'Water', icon: '💧', target: 8, unit: 'glasses', count: 3 },
+      { id: 'h2', name: 'Sleep', icon: '😴', target: 8, unit: 'hours', count: 7 },
+      { id: 'h3', name: 'Stretch', icon: '🧘', target: 1, unit: 'session', count: 0 }], nextHabit = 4;
+    function habitCopy() { return habits.map(function (h) { return Object.assign({}, h); }); }
+    // Made-up but steady numbers for any week, so the Summary tab has something to show.
+    function seeded(str, n) { var x = 0; for (var i = 0; i < str.length; i++) x = (x * 31 + str.charCodeAt(i)) % 9973; return x % n; }
+    function weekSummary(mondayStr) {
+      var m = parseDate(mondayStr), t = iso(today), list = checklist(t);
+      var days = DAYS.map(function (day, i) {
+        var d = ymd(addDays(m, i)), past = d < t, planned = (regimen[day] || []).length > 0;
+        if (d === t) return { date: d, day: day, calories: todayFood('calories'), protein: todayFood('protein'), carbs: todayFood('carbs'), fat: todayFood('fat'),
+          foodItems: food.filter(function (f) { return f.date === t; }).length, planned: planned, trained: workout.completed, notes: workout.notes,
+          tasksDone: list.items.filter(function (x) { return x.done; }).length, tasksTotal: list.items.length };
+        if (!past) return { date: d, day: day, calories: 0, protein: 0, carbs: 0, fat: 0, foodItems: 0, planned: planned, trained: false, notes: '', tasksDone: 0, tasksTotal: 3 };
+        var k = pastKcal[seeded(d, 10)], trained = planned && seeded(d + 'x', 5) > 0;
+        return { date: d, day: day, calories: k, protein: r0(k * 0.075), carbs: r0(k * 0.1), fat: r0(k * 0.032), foodItems: 5, planned: planned, trained: trained,
+          notes: trained && seeded(d + 'n', 3) === 0 ? 'Felt strong, added 5 lb' : '', tasksDone: 2 + seeded(d + 't', 3), tasksTotal: 4 };
+      });
+      return { start: mondayStr, days: days, habits: habits.map(function (h) {
+        return { id: h.id, name: h.name, icon: h.icon, target: h.target, unit: h.unit, counts: days.map(function (d) {
+          return d.date === t ? h.count : d.date > t ? 0 : Math.max(0, h.target - seeded(d.date + h.id, 4)); }) };
+      }) };
+    }
     var keySet = false;
     var demoCal = (function () {
       var base = mondayOf(today), list = [], n = 0;
@@ -1511,7 +1960,25 @@
       { title: 'Dentist', date: iso(new Date(today.getTime() + 864e5)), start: iso(new Date(today.getTime() + 864e5)) + 'T14:00', allDay: false }];
     return {
       getDashboard: function () { return { today: iso(today), dayName: dayName, settings: settings, regimen: regimen, log: log, weather: weather, events: events,
-        food: food, foodHistory: hist(), checklist: checklist(iso(today)), geminiConfigured: keySet }; },
+        food: food, foodHistory: hist(), checklist: checklist(iso(today)), geminiConfigured: keySet, workout: workoutDay(), habits: habitCopy() }; },
+      getWorkoutDay: function () { return workoutDay(); },
+      setExerciseDone: function (d, name, on) {
+        workout.checked = workout.checked.filter(function (n) { return n !== name; }); if (on) workout.checked.push(name);
+        var names = (regimen[dayName] || []).map(function (x) { return x.exercise; });
+        var all = names.length && names.every(function (n) { return workout.checked.indexOf(n) !== -1; });
+        if (all) workout.completed = true; else if (!on) workout.completed = false;
+        return workoutDay(); },
+      getHabits: function () { return habitCopy(); },
+      bumpHabit: function (id, d, delta) { habits.forEach(function (h) { if (h.id === id) h.count = Math.max(0, h.count + delta); }); return habitCopy(); },
+      saveHabit: function (v) { if (!String(v.name || '').trim()) throw new Error('Give the habit a name.');
+        var h = habits.filter(function (x) { return x.id === v.id; })[0];
+        var vals = { name: v.name.trim(), icon: v.icon || '', target: +v.target || 0, unit: v.unit || '' };
+        if (h) Object.assign(h, vals); else habits.push(Object.assign({ id: 'h' + nextHabit++, count: 0 }, vals));
+        return habitCopy(); },
+      deleteHabit: function (id) { habits = habits.filter(function (h) { return h.id !== id; }); return habitCopy(); },
+      getWeekSummary: function (m) { return weekSummary(m); },
+      setMorningEmail: function (on, hour) { settings.morningEmail = on ? 'on' : 'off'; settings.morningEmailHour = String(hour); return Object.assign({}, settings); },
+      sendMorningBrief: function () { return 'you@example.com (demo, nothing sent)'; },
       setTaskDone: function (id, d, done) { var l = (checks[id] || []).filter(function (x) { return x !== d; });
         if (done) l.push(d); checks[id] = l; return checklist(d); },
       addOnceTask: function (title, d, td) { addTask({ type: 'once', title: title, date: d || td }); return checklist(td); },
@@ -1549,7 +2016,7 @@
       getWeather: function () { return weather; },
       getWeekRegimen: function () { return regimen; },
       saveDayRegimen: function (day, ex) { regimen[day] = ex.filter(function (x) { return x.exercise; }); return JSON.parse(JSON.stringify(regimen)); },
-      saveLogEntry: function (d, c, n) { log = { date: d, completed: c, notes: n }; return log; },
+      saveLogEntry: function (d, c, n) { log = { date: d, completed: c, notes: n }; workout.completed = c; workout.notes = n; return log; },
       saveSettings: function (p) { Object.assign(settings, p); return Object.assign({}, settings); },
       searchLocation: function (q) { return [{ name: q + ' (demo)', latitude: 40, longitude: -74 }]; },
       listCalendars: function () { return [{ id: 'demo@group.calendar.google.com', name: 'Training' }]; },
