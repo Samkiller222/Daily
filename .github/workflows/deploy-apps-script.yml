@@ -38,6 +38,10 @@ jobs:
 
       - run: npm ci
 
+      # Stops here if Code.gs, index.html or appsscript.json is broken.
+      - name: Check code
+        run: npm test
+
       - name: Write clasp credentials
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}

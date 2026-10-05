@@ -67,6 +67,8 @@ Everything runs from the repo root. You need [Node.js](https://nodejs.org) 20 or
 ### Automatic updates from GitHub
 `.github/workflows/deploy-apps-script.yml` uploads the code and updates the live web app every time `Code.gs`, `index.html` or `appsscript.json` changes on the repo's default branch. The web app link stays the same. You can also run it by hand from the **Actions** tab (**Deploy to Apps Script → Run workflow**).
 
+Before uploading, the workflow runs `npm test` (`scripts/check.js`) and stops if anything is broken: a syntax error in `Code.gs` or the page's scripts, a function the page calls that `Code.gs` doesn't have (or that ends in `_`, which Apps Script keeps private), a function defined twice, or an invalid `appsscript.json`. The same check runs on every pull request. Run `npm test` locally before pushing to catch these early.
+
 It needs one repository secret:
 1. Sign in with `npm run login` (or `npx clasp login --no-localhost` on a machine without a browser).
 2. Copy the whole contents of `~/.clasprc.json`.
@@ -137,4 +139,5 @@ Then open http://localhost:3000 to try the app with demo data. No Google account
 | `index.html` | The web app page, with built-in demo data for local preview |
 | `appsscript.json` | Apps Script manifest: permissions, time zone and web app settings |
 | `server.js` | Local preview server used by `npm start` |
-| `package.json` | `npm start`, plus clasp scripts for pushing to Apps Script |
+| `scripts/check.js` | Pre-deploy checks run by `npm test` and the GitHub workflows |
+| `package.json` | `npm start`, `npm test`, plus clasp scripts for pushing to Apps Script |
