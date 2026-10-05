@@ -234,6 +234,15 @@
       padding: 16px; z-index: 20; }
     .modal { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-lg);
       padding: 18px; width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); }
+    .modal.wide { max-width: 860px; }
+    @media (min-width: 641px) {
+      .modal.wide .food-edit { grid-template-columns: 2fr 1.3fr 1fr 1fr 1fr 1fr 64px; }
+      .modal.wide .food-edit > button { justify-self: center; }
+    }
+    .modal.wide label.fld { margin: 0; min-width: 0; }
+    .modal.wide .fld span { display: none; margin-bottom: 3px; }
+    @media (max-width: 640px) { .modal.wide .fld span { display: block; } }
+    .food-edit.head span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .modal h3 { margin: 0 0 4px; font-family: var(--font-display); font-weight: 600; font-size: 18px; display: flex; gap: 10px; align-items: center; }
     .modal h3 .sw { width: 14px; height: 14px; border-radius: 4px; flex: 0 0 14px; }
     .modal .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
@@ -1418,9 +1427,12 @@
     }).catch(fail).then(function () { btn.disabled = false; });
   };
   function openRecipes() {
-    var fields = [['name', 'Name', 'text'], ['portion', 'Portion', 'text'], ['calories', 'kcal', 'number'],
-      ['protein', 'Prot g', 'number'], ['carbs', 'Carb g', 'number'], ['fat', 'Fat g', 'number']];
-    var inputs = fields.map(function (f) { return '<input data-f="' + f[0] + '" type="' + f[2] + '" step="any" min="0" placeholder="' + f[1] + '">'; }).join('');
+    var fields = [['name', 'Name', 'text', 'Name'], ['portion', 'Portion', 'text', 'Portion'], ['calories', 'kcal', 'number', 'kcal'],
+      ['protein', 'Protein', 'number', 'Protein g'], ['carbs', 'Carbs', 'number', 'Carbs g'], ['fat', 'Fat', 'number', 'Fat g']];
+    // Each field carries its own caption for phones, where the column headings are hidden.
+    var inputs = fields.map(function (f) {
+      return '<label class="fld"><span>' + f[3] + '</span><input data-f="' + f[0] + '" type="' + f[2] + '" step="any" min="0" placeholder="' + f[1] + '"></label>';
+    }).join('');
     function read(row) { var v = {}; row.querySelectorAll('input').forEach(function (i) { v[i.dataset.f] = i.value; }); return v; }
     function draw() {
       var list = state.data.recipes || [];
@@ -1457,6 +1469,7 @@
       $('recipeDone').onclick = closeModal;
     }
     draw();
+    $('evModal').classList.add('wide');
     $('evModalBg').classList.remove('hidden');
   }
   $('recipesManageBtn').onclick = openRecipes;
@@ -1696,7 +1709,7 @@
   }
 
   // ----- Event details -----
-  function closeModal() { $('evModalBg').classList.add('hidden'); }
+  function closeModal() { $('evModalBg').classList.add('hidden'); $('evModal').classList.remove('wide'); }
   $('evModalBg').onclick = function (e) { if (e.target === this) closeModal(); };
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
 
