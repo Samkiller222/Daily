@@ -7,6 +7,12 @@ name: Deploy to Apps Script
 
 on:
   push:
+    # Only the live branch deploys. "main" is listed so a future rename of
+    # the default branch keeps working; the job's `if` below still checks
+    # that the push is to the default branch.
+    branches:
+      - ccr-948934a4-z3r9pk
+      - main
     paths:
       - Code.gs
       - index.html
