@@ -5,6 +5,7 @@
   "description": "Daily dashboard: weather, Google Calendar, weekly training regimen and calorie tracker, backed by a Google Sheet (Google Apps Script web app).",
   "scripts": {
     "start": "node server.js",
+    "test": "node scripts/check.js",
     "login": "clasp login",
     "push": "clasp push",
     "open": "clasp open-script"
