@@ -7,6 +7,7 @@
  *   week has its own regimen that repeats every week until you change it.
  * - A calorie and macro tracker. Snap a photo of a meal and Gemini estimates
  *   calories, protein, carbs and fat; you review it, then it's saved here.
+ *   Meals you eat often can be saved as recipes and picked from a list.
  * - A daily checklist of weekly repeating tasks and one-time tasks.
  * - Workout check-off: tick off each exercise, with a training streak.
  * - Habit counters (water, sleep, ...) you tap up and down through the day.
@@ -24,6 +25,7 @@ var SHEETS = {
   log: { name: 'Log', headers: ['Date', 'Day', 'Completed', 'Notes', 'Logged At'] },
   food: { name: 'Food Log', headers: ['Date', 'Time', 'Meal', 'Food', 'Portion', 'Calories',
     'Protein (g)', 'Carbs (g)', 'Fat (g)', 'Source', 'ID'] },
+  recipes: { name: 'Recipes', headers: ['ID', 'Name', 'Portion', 'Calories', 'Protein (g)', 'Carbs (g)', 'Fat (g)', 'Created'] },
   tasks: { name: 'Tasks', headers: ['ID', 'Type', 'Title', 'Days', 'Date', 'Order', 'Created'] },
   taskChecks: { name: 'Task Checks', headers: ['Date', 'Task ID', 'Checked At'] },
   workoutChecks: { name: 'Workout Checks', headers: ['Date', 'Exercise', 'Checked At'] },
@@ -90,6 +92,7 @@ function getDashboard() {
     calendarError: null,
     food: getFoodDay(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
     foodHistory: getFoodHistory(FOOD_HISTORY_DAYS),
+    recipes: getRecipes(),
     checklist: getChecklist(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
     workout: getWorkoutDay(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
     habits: getHabits(Utilities.formatDate(now, tz, 'yyyy-MM-dd')),
@@ -696,6 +699,71 @@ function deleteFoodEntry(id, dateStr) {
     if (String(ids[i][0]) === String(id)) { sheet.deleteRow(i + 1); break; }
   }
   return { food: getFoodDay(dateStr), foodHistory: getFoodHistory(FOOD_HISTORY_DAYS) };
+}
+
+// ---------------------------------------------------------------------------
+// Saved recipes
+// ---------------------------------------------------------------------------
+// Each row of Recipes is one meal you eat often, with calories and macros per
+// serving. Picking it on the Food tab fills in a food entry you can still edit.
+
+var RECIPE_COL = { id: 0, name: 1, portion: 2, calories: 3, protein: 4, carbs: 5, fat: 6, created: 7 };
+
+/** Saved recipes, A to Z: [{id, name, portion, calories, protein, carbs, fat}]. */
+function getRecipes() {
+  return sheet_(SHEETS.recipes).getDataRange().getValues().slice(1)
+    .map(function (r) {
+      return {
+        id: String(r[RECIPE_COL.id]),
+        name: String(r[RECIPE_COL.name]),
+        portion: String(r[RECIPE_COL.portion]),
+        calories: Number(r[RECIPE_COL.calories]) || 0,
+        protein: Number(r[RECIPE_COL.protein]) || 0,
+        carbs: Number(r[RECIPE_COL.carbs]) || 0,
+        fat: Number(r[RECIPE_COL.fat]) || 0
+      };
+    })
+    .filter(function (x) { return x.id !== '' && x.name !== ''; })
+    .sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+}
+
+/**
+ * Creates a recipe, or updates one when recipe.id is set. Saving a new recipe
+ * under a name that already exists replaces that one. Returns all recipes.
+ * recipe: {id?, name, portion, calories, protein, carbs, fat}
+ */
+function saveRecipe(recipe) {
+  var name = String(recipe && recipe.name || '').trim();
+  if (!name) throw new Error('Give the recipe a name.');
+  var values = [name, String(recipe.portion || '').trim(),
+    num_(recipe.calories), num_(recipe.protein), num_(recipe.carbs), num_(recipe.fat)];
+  withLock_(function () {
+    var sheet = sheet_(SHEETS.recipes);
+    var id = recipe.id;
+    if (!id) {
+      var same = getRecipes().filter(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })[0];
+      if (same) id = same.id;
+    }
+    if (!id) {
+      var r = sheet.getLastRow() + 1;
+      sheet.getRange(r, 1, 1, 3).setNumberFormat('@');
+      sheet.getRange(r, 1, 1, 8).setValues([[Utilities.getUuid()].concat(values, [new Date()])]);
+      return;
+    }
+    var row = findRowById_(SHEETS.recipes, id);
+    if (row === -1) throw new Error('Recipe not found. Reload the page.');
+    sheet.getRange(row, RECIPE_COL.name + 1, 1, 2).setNumberFormat('@');
+    sheet.getRange(row, RECIPE_COL.name + 1, 1, values.length).setValues([values]);
+  });
+  return getRecipes();
+}
+
+function deleteRecipe(id) {
+  withLock_(function () {
+    var row = findRowById_(SHEETS.recipes, id);
+    if (row !== -1) sheet_(SHEETS.recipes).deleteRow(row);
+  });
+  return getRecipes();
 }
 
 function num_(v) {

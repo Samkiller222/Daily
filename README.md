@@ -9,7 +9,7 @@ A personal daily dashboard web app that runs on Google Apps Script:
 - **Workout check-off**: tick off each exercise in today's session. Ticking the last one marks the day done. Your training streak and this week's sessions are shown alongside. You can still mark the day done and add notes in one tap.
 - **Habit counters**: tap + or − for water, sleep or anything else you count, each with its own daily goal.
 - **Daily checklist**: weekly tasks that come back on the days you pick, plus one-time tasks you can add from the dashboard. Tick them off and drag them into any order.
-- **Calorie and macro tracker**: take or choose a photo of a meal and Gemini estimates each item's calories, protein, carbs and fat. You check and edit the numbers before they're saved to the sheet. You can also add food by hand. It shows your progress against daily goals (editable from the Food tab or Settings), the last 7 days, and your on-target streak (days within 10% of your calorie goal).
+- **Calorie and macro tracker**: take or choose a photo of a meal and Gemini estimates each item's calories, protein, carbs and fat. You check and edit the numbers before they're saved to the sheet. You can also add food by hand, or pick a meal you eat often from your saved recipes. It shows your progress against daily goals (editable from the Food tab or Settings), the last 7 days, and your on-target streak (days within 10% of your calorie goal).
 - **Weekly summary**: charts of calories against your goal, average macros, training sessions and notes, checklist completion and habits for any week.
 
 Because the app runs inside Google Apps Script, it already has access to your Sheet and Calendar. You don't need a Google Cloud project or OAuth client. The only key is an optional Gemini API key for food photos.
@@ -31,7 +31,7 @@ Because the app runs inside Google Apps Script, it already has access to your Sh
    - Click **Deploy**, then approve the permissions (Sheets, Calendar, external requests for the weather, and sending email and running a daily trigger for the optional morning email).
 5. **Open the web app URL** it gives you. Bookmark it, or add it to your phone's home screen.
 
-On first load, the app creates any missing tabs in your sheet: **Regimen**, **Settings**, **Log**, **Food Log**, **Tasks**, **Task Checks**, **Workout Checks**, **Habits** and **Habit Log**. **Habits** starts with Water (8 glasses) and Sleep (8 hours), which you can change in the app.
+On first load, the app creates any missing tabs in your sheet: **Regimen**, **Settings**, **Log**, **Food Log**, **Recipes**, **Tasks**, **Task Checks**, **Workout Checks**, **Habits** and **Habit Log**. **Habits** starts with Water (8 glasses) and Sleep (8 hours), which you can change in the app.
 
 ### Gemini API key (for food photos)
 1. Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
@@ -80,7 +80,7 @@ The secret gives access to your Apps Script projects, so keep the repo private o
 |---|---|
 | **Today** | The morning brief, weather, today's regimen (based on the weekday) with a tick box per exercise, your streak, a "Mark as done" button with notes, habit counters, your upcoming calendar events, and "Add today's workout" to your calendar. Tap a line in the brief to jump to that part of the app. Tap **⚙ Edit** on Habits to add, rename, delete or change the goal of a habit. |
 | **Checklist** | Today's tasks with a progress bar. Tick tasks off, drag the ⋮⋮ handle to reorder (the order is kept on later days too), and add one-time tasks for today or a later date. One-time tasks you don't finish carry over to the next day, and future ones are listed under **Coming up**. **⚙ Settings** (only on this tab) is where you add, rename, delete and choose the days for weekly tasks. The **Today** tab shows the same list, where you can also tick, reorder and add one-time tasks. |
-| **Food** | Today's calories and macros against your goals (**Edit goals** changes them), a 7-day history with your on-target streak, **📷 Photo** to analyze a meal with Gemini, **+ Add manually**, and today's log, where you can delete entries. |
+| **Food** | Today's calories and macros against your goals (**Edit goals** changes them), a 7-day history with your on-target streak, **📷 Photo** to analyze a meal with Gemini, **+ Add manually**, a saved-recipe list (**Recipes** adds, edits and deletes them; **☆ Save as recipe** saves what you're about to log), and today's log, where you can delete entries. |
 | **Summary** | A week at a glance: average calories, days on target, workouts done and checklist completion, then charts for calories against your goal, average macros, training sessions with their notes, checklist completion and habits. Move between weeks with ‹ ›. Hover over (or tap) a bar or square for its numbers. |
 | **Calendar** | Your Google Calendar in **Month**, **Week** or **Agenda** view. Move between weeks or months with ‹ ›, or jump back with **Today**. Every calendar you can see appears in its own colour, and you can tap a calendar's name to hide or show it. Tap a day to see its events and that day's training, or tap an event for details. **+ Event** adds an event. One-off events can be deleted here; repeating events are edited in Google Calendar. |
 | **Weekly regimen** | Choose a day (Mon–Sun) to add, edit, reorder, or remove exercises (Exercise / Sets / Reps / Weight / Notes). You can also copy another day's regimen. Click **Save**. |
@@ -104,6 +104,8 @@ Days with no rows count as rest days.
 **Log**: one row per day you mark done or add notes to (Date, Day, Completed, Notes, Logged At).
 
 **Food Log**: one row per food item (Date, Time, Meal, Food, Portion, Calories, Protein (g), Carbs (g), Fat (g), Source, ID). Source is `Gemini` or `Manual`. The ID column lets the app delete the right row, so don't edit it.
+
+**Recipes**: one row per saved recipe (ID, Name, Portion, Calories, Protein (g), Carbs (g), Fat (g), Created), with calories and macros per serving. They fill the recipe list on the Food tab. Save one from the Food tab with **☆ Save as recipe** (several items are added up into one), or add and edit them under **Recipes**.
 
 **Tasks**: one row per checklist task (ID, Type, Title, Days, Date, Order, Created). Type is `weekly` (shown on the comma-separated Days, e.g. `Monday,Thursday`) or `once` (shown from Date until ticked). Order is the list position. Don't edit the ID column.
 

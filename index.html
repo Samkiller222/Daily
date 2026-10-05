@@ -513,6 +513,10 @@
           </label>
           <button class="btn" id="manualBtn">+ Add manually</button>
         </div>
+        <div class="row" style="margin-top:8px;flex-wrap:nowrap">
+          <select id="recipeSelect" aria-label="Saved recipes" style="flex:1 1 0;min-width:0"></select>
+          <button class="btn small" id="recipesManageBtn">Recipes</button>
+        </div>
         <p class="muted small" id="geminiHint"></p>
         <img id="photoPreview" class="photo-preview hidden" alt="">
         <div id="photoExtra" class="hidden">
@@ -530,6 +534,7 @@
             <button class="btn" id="reviewAddBtn">+ Add item</button>
             <span class="muted small" id="reviewTotal"></span>
             <button class="btn" id="reviewCancelBtn">Cancel</button>
+            <button class="btn" id="reviewRecipeBtn" title="Save these items as one recipe you can pick next time">☆ Save as recipe</button>
             <button class="btn primary" id="reviewSaveBtn">Save to log</button>
           </div>
         </div>
@@ -1379,6 +1384,83 @@
   };
   $('goFoodBtn').onclick = function () { showTab('food'); };
 
+  // ---------- Saved recipes ----------
+  function renderRecipes() {
+    var list = state.data.recipes || [];
+    $('recipeSelect').innerHTML = '<option value="">' + (list.length ? 'Add a saved recipe (' + list.length + ')…' : 'No saved recipes yet') + '</option>' +
+      list.map(function (x) {
+        return '<option value="' + esc(x.id) + '">' + esc(x.name) + ' · ' + r0(x.calories) + ' kcal</option>';
+      }).join('');
+    $('recipeSelect').disabled = !list.length;
+  }
+  function applyRecipes(list) { state.data.recipes = list; renderRecipes(); }
+  $('recipeSelect').onchange = function () {
+    var x = (state.data.recipes || []).filter(function (r) { return r.id === this.value; }, this)[0];
+    this.value = '';
+    if (!x) return;
+    review.push({ food: x.name, portion: x.portion, calories: x.calories, protein: x.protein, carbs: x.carbs, fat: x.fat });
+    renderReview();
+  };
+  // Saves everything in the review list as one recipe: one item keeps its name, several are added up.
+  $('reviewRecipeBtn').onclick = function () {
+    var items = review.filter(function (x) { return String(x.food).trim(); });
+    if (!items.length) return toast('Add a food name first');
+    var one = items.length === 1;
+    var name = prompt('Name this recipe', one ? String(items[0].food).trim() : '');
+    if (name === null) return;
+    if (!name.trim()) return toast('Give the recipe a name');
+    var exists = (state.data.recipes || []).some(function (x) { return x.name.toLowerCase() === name.trim().toLowerCase(); });
+    if (exists && !confirm('You already have a recipe called "' + name.trim() + '". Replace it?')) return;
+    var btn = this; btn.disabled = true;
+    call('saveRecipe', { name: name.trim(), portion: one ? items[0].portion : '1 serving', calories: sum(items, 'calories'),
+      protein: sum(items, 'protein'), carbs: sum(items, 'carbs'), fat: sum(items, 'fat') }).then(function (l) {
+      applyRecipes(l); toast('Recipe saved');
+    }).catch(fail).then(function () { btn.disabled = false; });
+  };
+  function openRecipes() {
+    var fields = [['name', 'Name', 'text'], ['portion', 'Portion', 'text'], ['calories', 'kcal', 'number'],
+      ['protein', 'Prot g', 'number'], ['carbs', 'Carb g', 'number'], ['fat', 'Fat g', 'number']];
+    var inputs = fields.map(function (f) { return '<input data-f="' + f[0] + '" type="' + f[2] + '" step="any" min="0" placeholder="' + f[1] + '">'; }).join('');
+    function read(row) { var v = {}; row.querySelectorAll('input').forEach(function (i) { v[i.dataset.f] = i.value; }); return v; }
+    function draw() {
+      var list = state.data.recipes || [];
+      $('evModal').innerHTML = '<h3>Saved recipes</h3><p class="muted small" style="margin:0 0 8px">Calories and macros are per serving. ' +
+        'They show up in the recipe list on the Food tab. Changes save straight away.</p>' +
+        '<div class="food-edit head"><span>Name</span><span>Portion</span><span>kcal</span><span>Protein g</span><span>Carbs g</span><span>Fat g</span><span></span></div>' +
+        (list.length ? '' : '<p class="muted small">No recipes yet. Add one below, or use "Save as recipe" when you log food.</p>') +
+        list.map(function (x) { return '<div class="food-edit" data-id="' + esc(x.id) + '">' + inputs + '<button class="icon" title="Delete">✕</button></div>'; }).join('') +
+        '<label>New recipe</label><div class="food-edit" id="recipeNew">' + inputs + '<button class="btn primary" id="recipeAdd">Add</button></div>' +
+        '<div class="actions"><button class="btn primary" id="recipeDone">Done</button></div>';
+      list.forEach(function (x) {
+        var row = $('evModal').querySelector('[data-id="' + x.id.replace(/"/g, '') + '"]');
+        if (!row) return;
+        row.querySelectorAll('input').forEach(function (inp) {
+          inp.value = x[inp.dataset.f];
+          inp.onchange = function () {
+            var v = read(row); v.id = x.id;
+            if (!v.name.trim()) { inp.value = x.name; return toast('A recipe needs a name'); }
+            call('saveRecipe', v).then(function (l) { applyRecipes(l); toast('Saved'); }).catch(fail);
+          };
+        });
+        row.querySelector('.icon').onclick = function () {
+          if (!confirm('Delete the "' + x.name + '" recipe? Food you already logged stays.')) return;
+          call('deleteRecipe', x.id).then(function (l) { applyRecipes(l); draw(); toast('Recipe deleted'); }).catch(fail);
+        };
+      });
+      $('recipeAdd').onclick = function () {
+        var v = read($('recipeNew')), btn = this;
+        if (!v.name.trim()) { $('recipeNew').querySelector('[data-f=name]').focus(); return toast('Name the recipe first'); }
+        btn.disabled = true;
+        call('saveRecipe', v).then(function (l) { applyRecipes(l); draw(); toast('Recipe added'); })
+          .catch(function (e) { btn.disabled = false; fail(e); });
+      };
+      $('recipeDone').onclick = closeModal;
+    }
+    draw();
+    $('evModalBg').classList.remove('hidden');
+  }
+  $('recipesManageBtn').onclick = openRecipes;
+
   // Pick a sensible default meal for the time of day.
   (function () { var h = new Date().getHours();
     $('mealSelect').value = h < 11 ? 'Breakfast' : h < 15 ? 'Lunch' : h < 21 ? 'Dinner' : 'Snack'; })();
@@ -1951,7 +2033,7 @@
   call('getDashboard').then(function (data) {
     state.data = data;
     $('headerDate').textContent = parseDate(data.today).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-    renderWeather(); renderToday(); renderEvents(); renderSettings(); renderFood(); renderTasks(); renderHabits(); renderBrief();
+    renderWeather(); renderToday(); renderEvents(); renderSettings(); renderFood(); renderRecipes(); renderTasks(); renderHabits(); renderBrief();
     document.querySelectorAll('form.task-add input[type=date]').forEach(function (i) { i.value = data.today; });
     $('loading').classList.add('hidden');
     showTab('today');
@@ -1982,6 +2064,11 @@
     var food = [{ id: 'a', date: iso(today), time: '08:10', meal: 'Breakfast', food: 'Greek yogurt with berries', portion: '250 g',
       calories: 280, protein: 22, carbs: 30, fat: 7, source: 'Gemini' },
       { id: 'b', date: iso(today), time: '08:10', meal: 'Breakfast', food: 'Black coffee', portion: '1 cup', calories: 5, protein: 0, carbs: 0, fat: 0, source: 'Manual' }];
+    var recipes = [{ id: 'r1', name: 'Overnight oats', portion: '1 jar', calories: 420, protein: 24, carbs: 58, fat: 11 },
+      { id: 'r2', name: 'Chicken rice bowl', portion: '1 bowl', calories: 610, protein: 48, carbs: 70, fat: 14 },
+      { id: 'r3', name: 'Protein shake', portion: '500 ml', calories: 260, protein: 40, carbs: 12, fat: 5 }];
+    var recipeCopy = function () { return recipes.map(function (r) { return Object.assign({}, r); })
+      .sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); }); };
     var pastKcal = [2100, 2350, 1980, 2240, 2050, 2400, 2150, 1850, 2600, 2180];
     var todayFood = function (k) { return food.filter(function (f) { return f.date === iso(today); }).reduce(function (t, f) { return t + (+f[k] || 0); }, 0); };
     var hist = function () { return Array.from({ length: 30 }, function (_, i) { var back = 29 - i, d = iso(new Date(today.getTime() - back * 864e5));
@@ -2078,7 +2165,13 @@
       { title: 'Dentist', date: iso(new Date(today.getTime() + 864e5)), start: iso(new Date(today.getTime() + 864e5)) + 'T14:00', allDay: false }];
     return {
       getDashboard: function () { return { today: iso(today), dayName: dayName, settings: settings, regimen: regimen, log: log, weather: weather, events: events,
-        food: food, foodHistory: hist(), checklist: checklist(iso(today)), geminiConfigured: keySet, workout: workoutDay(), habits: habitCopy() }; },
+        food: food, foodHistory: hist(), recipes: recipeCopy(), checklist: checklist(iso(today)), geminiConfigured: keySet, workout: workoutDay(), habits: habitCopy() }; },
+      saveRecipe: function (v) { if (!String(v.name || '').trim()) throw new Error('Give the recipe a name.');
+        var name = v.name.trim(), x = recipes.filter(function (r) { return v.id ? r.id === v.id : r.name.toLowerCase() === name.toLowerCase(); })[0];
+        var vals = { name: name, portion: v.portion || '', calories: +v.calories || 0, protein: +v.protein || 0, carbs: +v.carbs || 0, fat: +v.fat || 0 };
+        if (x) Object.assign(x, vals); else recipes.push(Object.assign({ id: 'r' + Date.now() }, vals));
+        return recipeCopy(); },
+      deleteRecipe: function (id) { recipes = recipes.filter(function (r) { return r.id !== id; }); return recipeCopy(); },
       getWorkoutDay: function () { return workoutDay(); },
       setExerciseDone: function (d, name, on) {
         workout.checked = workout.checked.filter(function (n) { return n !== name; }); if (on) workout.checked.push(name);
